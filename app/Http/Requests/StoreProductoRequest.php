@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Http\Requests;
+
+use App\Models\Producto;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class StoreProductoRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user() !== null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        return [
+            'categoria_id' => ['required', 'exists:categorias,id'],
+            'codigo' => ['required', 'string', 'max:64', 'unique:productos,codigo'],
+            'nombre' => ['required', 'string', 'max:180'],
+            'descripcion' => ['nullable', 'string', 'max:10000'],
+            'unidad' => ['required', 'string', Rule::in(Producto::$unidades)],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'categoria_id' => 'categoría',
+            'codigo' => 'código',
+            'nombre' => 'nombre',
+            'descripcion' => 'descripción',
+            'unidad' => 'unidad',
+        ];
+    }
+}
