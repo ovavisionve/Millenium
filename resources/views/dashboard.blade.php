@@ -68,9 +68,8 @@
 
                 const ctx1 = document.getElementById('chartVentasCobranza');
                 if (ctx1) {
-                    const dark = document.documentElement.classList.contains('dark');
-                    const grid = dark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.35)';
-                    const text = dark ? '#e5e7eb' : '#374151';
+                    const grid = 'rgba(148,163,184,0.35)';
+                    const text = '#374151';
                     new Chart(ctx1, {
                         type: 'bar',
                         data: {
@@ -96,8 +95,7 @@
                 const flujoValues = @json($flujoValues);
                 const ctx2 = document.getElementById('chartFlujoMetodos');
                 if (ctx2 && flujoLabels.length) {
-                    const dark = document.documentElement.classList.contains('dark');
-                    const text = dark ? '#e5e7eb' : '#374151';
+                    const text = '#374151';
                     new Chart(ctx2, {
                         type: 'doughnut',
                         data: {
