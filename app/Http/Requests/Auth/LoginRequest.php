@@ -2,6 +2,14 @@
 
 namespace App\Http\Requests\Auth;
 
+/**
+ * Millennium / Incapor — petición de login
+ *
+ * Reglas: correo válido y máx. 255 caracteres (columna `users.email`); contraseña obligatoria y máx. 255
+ * (mitiga payloads enormes). Mensajes en español para caja negra / auditoría de UX.
+ * Credenciales incorrectas: un solo mensaje genérico (`auth.failed`) en el campo email.
+ */
+
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -28,8 +36,33 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string'],
+            'email' => ['required', 'string', 'email', 'max:255'],
+            'password' => ['required', 'string', 'max:255'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'El correo electrónico debe tener un formato válido (ej. nombre@empresa.com).',
+            'email.max' => 'El correo electrónico no puede superar :max caracteres.',
+            'password.required' => 'La contraseña es obligatoria.',
+            'password.max' => 'La contraseña no puede superar :max caracteres.',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'email' => 'correo electrónico',
+            'password' => 'contraseña',
         ];
     }
 

@@ -24,7 +24,7 @@
                     </div>
                     <div>
                         <x-input-label for="descripcion" value="Descripción (opcional)" />
-                        <textarea id="descripcion" name="descripcion" rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('descripcion') }}</textarea>
+                        <textarea id="descripcion" name="descripcion" rows="3" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-millennium-dark focus:ring-millennium-sand">{{ old('descripcion') }}</textarea>
                         <x-input-error class="mt-2" :messages="$errors->get('descripcion')" />
                     </div>
                     <div class="flex items-center gap-2 pt-4">

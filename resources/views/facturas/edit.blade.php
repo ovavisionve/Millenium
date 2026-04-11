@@ -17,7 +17,7 @@
                             <select id="cliente_id" name="cliente_id" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
                                 <option value="">— Seleccione —</option>
                                 @foreach ($clientes as $c)
-                                    <option value="{{ $c->id }}" @selected(old('cliente_id', $factura->cliente_id) == $c->id)>{{ $c->nombre_razon_social }} — {{ $c->full_identificacion }}</option>
+                                <option value="{{ $c->id }}" @selected(old('cliente_id', $factura->cliente_id) == $c->id)>{{ $c->nombre_razon_social }} — {{ $c->full_identificacion }}</option>
                                 @endforeach
                             </select>
                             <x-input-error class="mt-2" :messages="$errors->get('cliente_id')" />
@@ -44,7 +44,7 @@
                 <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 space-y-4">
                     <div class="flex justify-between items-center">
                         <h3 class="font-medium text-gray-900 dark:text-gray-100">Líneas de producto</h3>
-                        <button type="button" @click="lineas.push({ producto_id: '', cantidad: '', precio_unitario: '' })" class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">+ Agregar línea</button>
+                        <button type="button" @click="lineas.push({ producto_id: '', cantidad: '', precio_unitario: '' })" class="text-sm text-millennium-dark dark:text-millennium-sand hover:underline">+ Agregar línea</button>
                     </div>
 
                     <div class="overflow-x-auto border border-gray-200 dark:border-gray-600 rounded-lg">
@@ -64,7 +64,7 @@
                                             <select class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 text-sm" x-bind:name="'lineas[' + index + '][producto_id]'" x-model="linea.producto_id" required>
                                                 <option value="">— Producto —</option>
                                                 @foreach ($productos as $p)
-                                                    <option value="{{ $p->id }}">{{ $p->nombre }} ({{ $p->categoria->nombre }}) — {{ $p->codigo }}</option>
+                                                <option value="{{ $p->id }}">{{ $p->nombre }} ({{ $p->categoria->nombre }}) — {{ $p->codigo }}</option>
                                                 @endforeach
                                             </select>
                                         </td>

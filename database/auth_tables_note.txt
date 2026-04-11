@@ -1,0 +1,21 @@
+Millennium — tablas relacionadas con autenticación y sesión (Laravel típico)
+
+users
+  Login (email + password hasheado), role, is_active, remember_token, email_verified_at.
+  Las tablas de negocio (clientes, facturas, factura_lineas, pagos, productos, categorías)
+  no guardan contraseñas; referencian usuarios solo si el modelo/migración lo define.
+
+password_reset_tokens
+  Recuperación de contraseña ("¿Olvidaste tu contraseña?").
+
+sessions
+  Sesiones en BD cuando SESSION_DRIVER=database (ver .env).
+
+cache, cache_locks
+  Caché de aplicación; no son login directo.
+
+failed_jobs, jobs, job_batches
+  Colas; no son login.
+
+migrations
+  Historial de esquema.

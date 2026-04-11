@@ -24,24 +24,23 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Accesos para demos / equipo (cambiar contraseñas en producción o desde /usuarios si eres admin).
         User::query()->updateOrCreate(
             ['email' => 'video@millennium.local'],
             [
-                'name' => 'Equipo video',
-                'password' => 'VideoMillennium2026!',
-                'role' => User::ROLE_VENDEDOR,
+                'name' => 'Administrador (demo / video)',
+                'password' => 'Millennium2026!',
+                'role' => User::ROLE_ADMIN,
                 'is_active' => true,
                 'email_verified_at' => now(),
             ]
         );
 
         User::query()->updateOrCreate(
-            ['email' => 'invitado@millennium.local'],
+            ['email' => 'colaborador@millennium.local'],
             [
-                'name' => 'Usuario invitado',
-                'password' => 'InvitadoMillennium2026!',
-                'role' => User::ROLE_VENDEDOR,
+                'name' => 'Administrador (colaborador)',
+                'password' => 'Millennium2026!',
+                'role' => User::ROLE_ADMIN,
                 'is_active' => true,
                 'email_verified_at' => now(),
             ]

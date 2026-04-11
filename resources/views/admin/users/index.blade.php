@@ -13,15 +13,15 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
             @if (session('status'))
-                <div class="rounded-md bg-green-50 dark:bg-green-900/20 p-4 text-sm text-green-800 dark:text-green-200">
-                    {{ session('status') }}
-                </div>
+            <div class="rounded-md bg-green-50 dark:bg-green-900/20 p-4 text-sm text-green-800 dark:text-green-200">
+                {{ session('status') }}
+            </div>
             @endif
 
             @if ($errors->has('error'))
-                <div class="rounded-md bg-red-50 dark:bg-red-900/20 p-4 text-sm text-red-800 dark:text-red-200">
-                    {{ $errors->first('error') }}
-                </div>
+            <div class="rounded-md bg-red-50 dark:bg-red-900/20 p-4 text-sm text-red-800 dark:text-red-200">
+                {{ $errors->first('error') }}
+            </div>
             @endif
 
             <form method="get" action="{{ route('usuarios.index') }}" class="flex flex-wrap gap-2 items-end">
@@ -32,7 +32,7 @@
                 </div>
                 <x-secondary-button type="submit" class="h-10">Buscar</x-secondary-button>
                 @if (request('buscar'))
-                    <a href="{{ route('usuarios.index') }}" class="inline-flex items-center px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Limpiar</a>
+                <a href="{{ route('usuarios.index') }}" class="inline-flex items-center px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Limpiar</a>
                 @endif
             </form>
 
@@ -50,40 +50,40 @@
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
                             @forelse ($users as $u)
-                                <tr class="text-gray-900 dark:text-gray-100">
-                                    <td class="px-4 py-3">{{ $u->name }}</td>
-                                    <td class="px-4 py-3">{{ $u->email }}</td>
-                                    <td class="px-4 py-3">{{ $roleLabels[$u->role] ?? $u->role }}</td>
-                                    <td class="px-4 py-3">
-                                        @if ($u->is_active)
-                                            <span class="text-green-600 dark:text-green-400">Activo</span>
-                                        @else
-                                            <span class="text-gray-500">Inactivo</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-3 text-end space-x-2 whitespace-nowrap">
-                                        <a href="{{ route('usuarios.edit', $u) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">Editar</a>
-                                        @if ($u->id !== auth()->id())
-                                            <form action="{{ route('usuarios.destroy', $u) }}" method="post" class="inline" onsubmit="return confirm('¿Eliminar este usuario?');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="text-red-600 dark:text-red-400 hover:underline">Eliminar</button>
-                                            </form>
-                                        @endif
-                                    </td>
-                                </tr>
+                            <tr class="text-gray-900 dark:text-gray-100">
+                                <td class="px-4 py-3">{{ $u->name }}</td>
+                                <td class="px-4 py-3">{{ $u->email }}</td>
+                                <td class="px-4 py-3">{{ $roleLabels[$u->role] ?? $u->role }}</td>
+                                <td class="px-4 py-3">
+                                    @if ($u->is_active)
+                                    <span class="text-green-600 dark:text-green-400">Activo</span>
+                                    @else
+                                    <span class="text-gray-500">Inactivo</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 text-end space-x-2 whitespace-nowrap">
+                                    <a href="{{ route('usuarios.edit', $u) }}" class="text-millennium-dark dark:text-millennium-sand hover:underline">Editar</a>
+                                    @if ($u->id !== auth()->id())
+                                    <form action="{{ route('usuarios.destroy', $u) }}" method="post" class="inline" onsubmit="return confirm('¿Eliminar este usuario?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-600 dark:text-red-400 hover:underline">Eliminar</button>
+                                    </form>
+                                    @endif
+                                </td>
+                            </tr>
                             @empty
-                                <tr>
-                                    <td colspan="5" class="px-4 py-8 text-center text-gray-500">No hay usuarios.</td>
-                                </tr>
+                            <tr>
+                                <td colspan="5" class="px-4 py-8 text-center text-gray-500">No hay usuarios.</td>
+                            </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
                 @if ($users->hasPages())
-                    <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-600">
-                        {{ $users->links() }}
-                    </div>
+                <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-600">
+                    {{ $users->links() }}
+                </div>
                 @endif
             </div>
         </div>

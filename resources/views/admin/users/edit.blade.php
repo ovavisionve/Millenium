@@ -37,9 +37,9 @@
 
                     <div>
                         <x-input-label for="role" value="Rol" />
-                        <select id="role" name="role" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <select id="role" name="role" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-millennium-dark focus:ring-millennium-sand">
                             @foreach ($roles as $r)
-                                <option value="{{ $r }}" @selected(old('role', $user->role) === $r)>{{ $roleLabels[$r] }}</option>
+                            <option value="{{ $r }}" @selected(old('role', $user->role) === $r)>{{ $roleLabels[$r] }}</option>
                             @endforeach
                         </select>
                         <x-input-error class="mt-2" :messages="$errors->get('role')" />
@@ -47,7 +47,7 @@
 
                     <div class="flex items-center gap-2">
                         <input type="hidden" name="is_active" value="0">
-                        <input id="is_active" name="is_active" type="checkbox" value="1" class="rounded border-gray-300 dark:border-gray-700 text-indigo-600 shadow-sm"
+                        <input id="is_active" name="is_active" type="checkbox" value="1" class="rounded border-gray-300 dark:border-gray-700 text-millennium-dark shadow-sm focus:ring-millennium-sand"
                             {{ old('is_active', $user->is_active) ? 'checked' : '' }}>
                         <x-input-label for="is_active" value="Usuario activo" class="!mb-0" />
                     </div>

@@ -14,11 +14,10 @@
                             <select
                                 id="tipo_documento"
                                 name="tipo_documento"
-                                class="shrink-0 w-[4.5rem] rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                required
-                            >
+                                class="shrink-0 w-[4.5rem] rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 text-sm shadow-sm focus:border-millennium-dark focus:ring-millennium-sand"
+                                required>
                                 @foreach ($tiposDocumento as $codigo => $etiqueta)
-                                    <option value="{{ $codigo }}" title="{{ $etiqueta }}" @selected(old('tipo_documento', $cliente->tipo_documento) === $codigo)>{{ $codigo }}</option>
+                                <option value="{{ $codigo }}" title="{{ $etiqueta }}" @selected(old('tipo_documento', $cliente->tipo_documento) === $codigo)>{{ $codigo }}</option>
                                 @endforeach
                             </select>
                             <x-text-input
@@ -28,8 +27,7 @@
                                 class="flex-1 min-w-0 font-mono"
                                 :value="old('documento_numero', $cliente->documento_numero)"
                                 required
-                                autocomplete="off"
-                            />
+                                autocomplete="off" />
                         </div>
                         <x-input-error class="mt-2" :messages="$errors->get('tipo_documento')" />
                         <x-input-error class="mt-2" :messages="$errors->get('documento_numero')" />
@@ -54,7 +52,7 @@
                         <select id="vendedor_id" name="vendedor_id" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
                             <option value="">— Sin asignar —</option>
                             @foreach ($vendedores as $v)
-                                <option value="{{ $v->id }}" @selected(old('vendedor_id', $cliente->vendedor_id) == $v->id)>{{ $v->name }} — {{ \App\Models\User::roleLabels()[$v->role] ?? $v->role }}</option>
+                            <option value="{{ $v->id }}" @selected(old('vendedor_id', $cliente->vendedor_id) == $v->id)>{{ $v->name }} — {{ \App\Models\User::roleLabels()[$v->role] ?? $v->role }}</option>
                             @endforeach
                         </select>
                         <x-input-error class="mt-2" :messages="$errors->get('vendedor_id')" />

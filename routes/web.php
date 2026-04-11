@@ -4,15 +4,23 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CobranzaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FacturaController;
-use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\Maestro\CategoriaController;
 use App\Http\Controllers\Maestro\ClienteController;
 use App\Http\Controllers\Maestro\ProductoController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReporteController;
 use Illuminate\Support\Facades\Route;
 
+// Esta ruta define la página de inicio ('/'). Cuando un usuario visita el dominio principal (ej: http://localhost/),
+// Laravel ejecuta esta función anónima (closure), que simplemente retorna la vista 'welcome'.
+// Es la portada/pantalla de bienvenida por defecto de la aplicación Laravel.
+
+/* Route::get('/', function () { */
+/*     return view('welcome'); */
+/* }); */
+
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 });
 
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');

@@ -13,7 +13,7 @@
                         <select id="categoria_id" name="categoria_id" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
                             <option value="">— Seleccione —</option>
                             @foreach ($categorias as $cat)
-                                <option value="{{ $cat->id }}" @selected(old('categoria_id') == $cat->id)>{{ $cat->nombre }} ({{ $cat->codigo }})</option>
+                            <option value="{{ $cat->id }}" @selected(old('categoria_id')==$cat->id)>{{ $cat->nombre }} ({{ $cat->codigo }})</option>
                             @endforeach
                         </select>
                         <x-input-error class="mt-2" :messages="$errors->get('categoria_id')" />
@@ -37,14 +37,14 @@
                         <x-input-label for="unidad" value="Unidad" />
                         <select id="unidad" name="unidad" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
                             @foreach ($unidades as $u)
-                                <option value="{{ $u }}" @selected(old('unidad', 'kg') === $u)>{{ $unidadLabels[$u] }}</option>
+                            <option value="{{ $u }}" @selected(old('unidad', 'kg' )===$u)>{{ $unidadLabels[$u] }}</option>
                             @endforeach
                         </select>
                         <x-input-error class="mt-2" :messages="$errors->get('unidad')" />
                     </div>
                     <div class="flex items-center gap-2">
                         <input type="hidden" name="activo" value="0">
-                        <input id="activo" name="activo" type="checkbox" value="1" class="rounded border-gray-300 dark:border-gray-700 text-indigo-600 shadow-sm" {{ old('activo', true) ? 'checked' : '' }}>
+                        <input id="activo" name="activo" type="checkbox" value="1" class="rounded border-gray-300 dark:border-gray-700 text-millennium-dark shadow-sm focus:ring-millennium-sand" {{ old('activo', true) ? 'checked' : '' }}>
                         <x-input-label for="activo" value="Producto activo" class="!mb-0" />
                     </div>
                     <div class="flex items-center gap-2 pt-4">

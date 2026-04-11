@@ -1,59 +1,79 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Millennium (Incapor)
+
+Sistema web para la gestión comercial de **Millennium** (marca **Incapor**): maestros, facturación, cobranza, reportes y dashboard operativo.
 
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <img src="docs/readme/ova.png" alt="Ova" width="140" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/readme/victor-arx.jpg" alt="Víctor ARX" width="140" />
 </p>
 
-## About Laravel
+## Colaboración
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+| Organización | Rol |
+|--------------|-----|
+| **[Ova](https://github.com/ovavisionve)** (Ova Visión) | Desarrollo y dirección técnica del proyecto |
+| **Millennium** | Empresa cliente — alcance funcional y operativo del sistema |
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+**Desarrollador principal:** [Víctor Andrés Carrillo Barreto](https://github.com/victorx2) (`victorx2`).
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+**Repositorio:** [github.com/ovavisionve/Millenium](https://github.com/ovavisionve/Millenium)
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Enfoque (qué estamos construyendo)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Aplicación **Laravel** orientada a **cuentas por cobrar en la calle**: registro de clientes y productos, facturas manuales con crédito, abonos con tasa y método de pago, historial y reportes filtrados (vendedor, zona, categoría, fechas). La interfaz sigue la guía operativa por pasos (maestros → facturación → cobranza → canceladas → reportes → dashboard).
 
-## Laravel Sponsors
+---
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Versiones y stack
 
-### Premium Partners
+| Componente | Versión / notas |
+|------------|-----------------|
+| PHP | ^8.2 |
+| Laravel | ^12 |
+| Node (frontend) | Vite + Tailwind CSS 4 + Alpine.js |
+| Base de datos | MySQL / MariaDB (configurable en `.env`) |
+| Pruebas automatizadas | PHPUnit (`php artisan test`) |
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+---
 
-## Contributing
+## Estado del proyecto (visión rápida)
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+**Listo o avanzado**
 
-## Code of Conduct
+- [x] Autenticación, roles y usuarios activos/inactivos  
+- [x] UI marca Incapor (login, navegación, componentes)  
+- [x] Módulos: clientes, categorías, productos, facturas, cobranza, canceladas, reportes  
+- [x] Dashboard con métricas y gráficas (Chart.js)  
+- [x] Pruebas de caja negra en login (`LoginBlackBoxTest`) — **ejecutadas en local**
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+**En curso / local**
 
-## Security Vulnerabilities
+- [ ] **Mecanismos de seguridad** (rate limit, validaciones, flujos de acceso): en **pruebas en entorno local**; falta validación en **staging/producción** con HTTPS y políticas definitivas.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+**Pendiente (alto nivel)**
 
-## License
+- [ ] Despliegue estable (servidor, `.env` de producción, HTTPS, backups)  
+- [ ] Endurecer y documentar políticas de acceso para el equipo y agencias (canal privado, no en este README público)  
+- [ ] CI opcional (GitHub Actions: tests en cada push)
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+> **Nota de seguridad:** credenciales, URLs internas y datos sensibles del negocio **no** van al repositorio; usá `.env` local y canales privados para el grupo.
+
+---
+
+## Arranque local
+
+1. `composer install`  
+2. Copiar `.env.example` → `.env`, configurar BD y `php artisan key:generate`  
+3. `php artisan migrate`  
+4. `npm install` && `npm run dev` (o `npm run build`)
+
+```bash
+php artisan test
+```
+
+## Licencia
+
+MIT (código de la aplicación). El framework [Laravel](https://laravel.com) conserva su licencia MIT.

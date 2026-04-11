@@ -35,7 +35,7 @@
                         <x-input-label for="tipo_tasa" value="Tipo de tasa (manual)" />
                         <select id="tipo_tasa" name="tipo_tasa" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm" required>
                             @foreach ($tiposTasa as $val => $label)
-                                <option value="{{ $val }}" @selected(old('tipo_tasa', \App\Models\Pago::TIPO_TASA_BCV) === $val)>{{ $label }}</option>
+                            <option value="{{ $val }}" @selected(old('tipo_tasa', \App\Models\Pago::TIPO_TASA_BCV)===$val)>{{ $label }}</option>
                             @endforeach
                         </select>
                         <x-input-error :messages="$errors->get('tipo_tasa')" class="mt-2" />
@@ -58,12 +58,12 @@
                     <select id="metodo_pago" name="metodo_pago" x-model="metodo" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm" required>
                         <optgroup label="Divisas / efectivo / transferencia">
                             @foreach ($metodosDivisas as $val => $label)
-                                <option value="{{ $val }}">{{ $label }}</option>
+                            <option value="{{ $val }}">{{ $label }}</option>
                             @endforeach
                         </optgroup>
                         <optgroup label="Bolívares">
                             @foreach ($metodosBolivares as $val => $label)
-                                <option value="{{ $val }}">{{ $label }}</option>
+                            <option value="{{ $val }}">{{ $label }}</option>
                             @endforeach
                         </optgroup>
                     </select>
@@ -93,7 +93,7 @@
 
                 <div>
                     <x-input-label for="comprobante" value="Comprobante (galería o cámara)" />
-                    <input id="comprobante" name="comprobante" type="file" accept="image/*,.pdf" capture="environment" class="mt-1 block w-full text-sm text-gray-600 dark:text-gray-300 file:mr-4 file:rounded file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 dark:file:bg-indigo-900/40 dark:file:text-indigo-200" />
+                    <input id="comprobante" name="comprobante" type="file" accept="image/*,.pdf" capture="environment" class="mt-1 block w-full text-sm text-gray-600 dark:text-gray-300 file:mr-4 file:rounded file:border-0 file:bg-millennium-sand/25 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-millennium-dark dark:file:bg-millennium-dark/40 dark:file:text-millennium-sand" />
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">En móvil: suele abrir la cámara directamente. Máx. 5 MB.</p>
                     <x-input-error :messages="$errors->get('comprobante')" class="mt-2" />
                 </div>

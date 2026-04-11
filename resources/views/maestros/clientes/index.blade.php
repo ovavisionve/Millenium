@@ -9,7 +9,7 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
             @if (session('status'))
-                <div class="rounded-md bg-green-50 dark:bg-green-900/20 p-4 text-sm text-green-800 dark:text-green-200">{{ session('status') }}</div>
+            <div class="rounded-md bg-green-50 dark:bg-green-900/20 p-4 text-sm text-green-800 dark:text-green-200">{{ session('status') }}</div>
             @endif
 
             <form method="get" class="flex flex-wrap gap-3 items-end">
@@ -22,13 +22,13 @@
                     <select id="vendedor_id" name="vendedor_id" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
                         <option value="">Todos</option>
                         @foreach ($vendedores as $v)
-                            <option value="{{ $v->id }}" @selected((string) request('vendedor_id') === (string) $v->id)>{{ $v->name }} ({{ \App\Models\User::roleLabels()[$v->role] ?? $v->role }})</option>
+                        <option value="{{ $v->id }}" @selected((string) request('vendedor_id')===(string) $v->id)>{{ $v->name }} ({{ \App\Models\User::roleLabels()[$v->role] ?? $v->role }})</option>
                         @endforeach
                     </select>
                 </div>
                 <x-secondary-button type="submit" class="h-10">Filtrar</x-secondary-button>
                 @if (request()->anyFilled(['buscar', 'vendedor_id']))
-                    <a href="{{ route('clientes.index') }}" class="text-sm text-gray-600 dark:text-gray-400 hover:underline">Limpiar</a>
+                <a href="{{ route('clientes.index') }}" class="text-sm text-gray-600 dark:text-gray-400 hover:underline">Limpiar</a>
                 @endif
             </form>
 
@@ -47,28 +47,30 @@
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
                             @forelse ($clientes as $c)
-                                <tr class="text-gray-900 dark:text-gray-100">
-                                    <td class="px-4 py-3 font-mono text-xs">{{ $c->full_identificacion }}</td>
-                                    <td class="px-4 py-3">{{ $c->nombre_razon_social }}</td>
-                                    <td class="px-4 py-3">{{ $c->telefono ?? '—' }}</td>
-                                    <td class="px-4 py-3">{{ $c->zona }}</td>
-                                    <td class="px-4 py-3">{{ $c->vendedor?->name ?? '—' }}</td>
-                                    <td class="px-4 py-3 text-end space-x-2 whitespace-nowrap">
-                                        <a href="{{ route('clientes.edit', $c) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">Editar</a>
-                                        <form action="{{ route('clientes.destroy', $c) }}" method="post" class="inline" onsubmit="return confirm('¿Eliminar este cliente?');">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="text-red-600 dark:text-red-400 hover:underline">Eliminar</button>
-                                        </form>
-                                    </td>
-                                </tr>
+                            <tr class="text-gray-900 dark:text-gray-100">
+                                <td class="px-4 py-3 font-mono text-xs">{{ $c->full_identificacion }}</td>
+                                <td class="px-4 py-3">{{ $c->nombre_razon_social }}</td>
+                                <td class="px-4 py-3">{{ $c->telefono ?? '—' }}</td>
+                                <td class="px-4 py-3">{{ $c->zona }}</td>
+                                <td class="px-4 py-3">{{ $c->vendedor?->name ?? '—' }}</td>
+                                <td class="px-4 py-3 text-end space-x-2 whitespace-nowrap">
+                                    <a href="{{ route('clientes.edit', $c) }}" class="text-millennium-dark dark:text-millennium-sand hover:underline">Editar</a>
+                                    <form action="{{ route('clientes.destroy', $c) }}" method="post" class="inline" onsubmit="return confirm('¿Eliminar este cliente?');">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="text-red-600 dark:text-red-400 hover:underline">Eliminar</button>
+                                    </form>
+                                </td>
+                            </tr>
                             @empty
-                                <tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No hay clientes.</td></tr>
+                            <tr>
+                                <td colspan="6" class="px-4 py-8 text-center text-gray-500">No hay clientes.</td>
+                            </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
                 @if ($clientes->hasPages())
-                    <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-600">{{ $clientes->links() }}</div>
+                <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-600">{{ $clientes->links() }}</div>
                 @endif
             </div>
         </div>
