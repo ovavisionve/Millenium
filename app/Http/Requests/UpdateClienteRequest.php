@@ -3,9 +3,14 @@
 namespace App\Http\Requests;
 
 use App\Models\Cliente;
+use App\Support\VenezuelanDocumento;
+use App\Support\VenezuelanTelefonoMovil;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * Millennium — edición de cliente: mismas reglas que el alta, ignorando el registro actual en unique.
+ */
 class UpdateClienteRequest extends FormRequest
 {
     public function authorize(): bool
@@ -19,11 +24,18 @@ class UpdateClienteRequest extends FormRequest
         if (! in_array($tipo, Cliente::TIPOS_DOCUMENTO, true)) {
             $tipo = 'V';
         }
-        $num = trim((string) $this->input('documento_numero', ''));
-        $this->merge([
+        $num = VenezuelanDocumento::soloDigitos((string) $this->input('documento_numero', ''));
+        $merge = [
             'tipo_documento' => $tipo,
             'documento_numero' => $num,
-        ]);
+        ];
+        $tel = $this->input('telefono');
+        if ($tel === null || trim((string) $tel) === '') {
+            $merge['telefono'] = null;
+        } else {
+            $merge['telefono'] = VenezuelanTelefonoMovil::soloDigitos((string) $tel);
+        }
+        $this->merge($merge);
     }
 
     /**
@@ -31,23 +43,54 @@ class UpdateClienteRequest extends FormRequest
      */
     public function rules(): array
     {
-        $id = $this->route('cliente')?->id;
+        $cliente = $this->route('cliente');
 
         return [
             'tipo_documento' => ['required', 'string', 'size:1', Rule::in(Cliente::TIPOS_DOCUMENTO)],
             'documento_numero' => [
                 'required',
                 'string',
-                'max:32',
-                'regex:/^[0-9A-Za-z.\-]+$/u',
+                'max:16',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $msg = VenezuelanDocumento::validarFormato(
+                        (string) $this->input('tipo_documento'),
+                        (string) $value
+                    );
+                    if ($msg !== null) {
+                        $fail($msg);
+                    }
+                },
                 Rule::unique('clientes', 'documento_numero')
                     ->where(fn ($q) => $q->where('tipo_documento', $this->input('tipo_documento')))
-                    ->ignore($id),
+                    ->ignore($cliente->id),
             ],
-            'nombre_razon_social' => ['required', 'string', 'max:180'],
-            'telefono' => ['nullable', 'string', 'max:40'],
-            'zona' => ['required', 'string', 'max:120'],
+            'nombre_razon_social' => ['required', 'string', 'min:3', 'max:180', 'regex:/^[\p{L}\p{N}][\p{L}\p{N}\s.\'\-,&]+$/u'],
+            'telefono' => [
+                'nullable',
+                'string',
+                'max:'.VenezuelanTelefonoMovil::LONGITUD,
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $msg = VenezuelanTelefonoMovil::validarOpcional($value !== null ? (string) $value : null);
+                    if ($msg !== null) {
+                        $fail($msg);
+                    }
+                },
+            ],
+            'zona' => ['required', 'string', 'min:2', 'max:120'],
             'vendedor_id' => ['nullable', 'exists:users,id'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'documento_numero.unique' => __('clientes.documento_ya_registrado'),
+            'nombre_razon_social.min' => 'El nombre o razón social debe tener al menos :min caracteres (evitá iniciales sueltas).',
+            'nombre_razon_social.regex' => 'El nombre solo puede incluir letras, números y signos habituales (punto, coma, guion); no uses caracteres raros al inicio.',
+            'zona.min' => 'Indicá la zona o ruta con al menos :min caracteres.',
         ];
     }
 

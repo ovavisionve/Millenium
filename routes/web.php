@@ -32,6 +32,8 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('categorias', CategoriaController::class)->except(['show']);
     Route::resource('productos', ProductoController::class)->except(['show']);
+    // Millennium: ruta específica antes del resource para no capturarla como {cliente}
+    Route::get('clientes/check-documento', [ClienteController::class, 'checkDocumento'])->name('clientes.check-documento');
     Route::resource('clientes', ClienteController::class)->except(['show']);
     Route::post('facturas/{factura}/verificar', [FacturaController::class, 'verificar'])->name('facturas.verificar');
     Route::get('facturas/canceladas', [FacturaController::class, 'canceladas'])->name('facturas.canceladas');
