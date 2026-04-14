@@ -5,9 +5,14 @@ namespace App\Http\Controllers\Maestro;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreClienteRequest;
 use App\Http\Requests\UpdateClienteRequest;
+use App\Models\Ciudad;
 use App\Models\Cliente;
+use App\Models\Estado;
+use App\Models\Municipio;
+use App\Models\Parroquia;
 use App\Models\User;
 use App\Support\VenezuelanDocumento;
+use App\Support\ZonasComerciales;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,7 +23,7 @@ class ClienteController extends Controller
 {
     public function index(Request $request): View
     {
-        $q = Cliente::query()->with('vendedor')->orderBy('nombre_razon_social');
+        $q = Cliente::query()->with(['vendedor', 'estado', 'ciudad', 'municipio', 'parroquia'])->orderBy('nombre_razon_social');
 
         if ($request->filled('buscar')) {
             $s = $request->string('buscar')->toString();
@@ -29,9 +34,14 @@ class ClienteController extends Controller
             $q->where('vendedor_id', $request->integer('vendedor_id'));
         }
 
+        if ($request->filled('zona') && $request->string('zona')->trim()->toString() !== '') {
+            $q->where('zona', $request->string('zona')->trim()->toString());
+        }
+
         return view('maestros.clientes.index', [
             'clientes' => $q->paginate(15)->withQueryString(),
             'vendedores' => User::opcionesVendedor(),
+            'zonasComercialesFiltro' => ZonasComerciales::opciones(),
         ]);
     }
 
@@ -81,6 +91,8 @@ class ClienteController extends Controller
         return view('maestros.clientes.create', [
             'vendedores' => User::opcionesVendedor(),
             'tiposDocumento' => Cliente::tiposDocumentoLabels(),
+            'estados' => Estado::query()->orderBy('nombre_estado')->get(['id_estado', 'nombre_estado', 'codigo_iso_3166_2']),
+            'zonasComerciales' => ZonasComerciales::opciones(),
         ]);
     }
 
@@ -95,10 +107,64 @@ class ClienteController extends Controller
     public function edit(Cliente $cliente): View
     {
         return view('maestros.clientes.edit', [
-            'cliente' => $cliente,
+            'cliente' => $cliente->load(['estado', 'ciudad', 'municipio', 'parroquia']),
             'vendedores' => User::opcionesVendedor(),
             'tiposDocumento' => Cliente::tiposDocumentoLabels(),
+            'estados' => Estado::query()->orderBy('nombre_estado')->get(['id_estado', 'nombre_estado', 'codigo_iso_3166_2']),
+            'zonasComerciales' => ZonasComerciales::opciones(),
         ]);
+    }
+
+    /**
+     * Millennium — ciudades por estado (dropdown dependiente).
+     */
+    public function ciudades(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'id_estado' => ['required', 'integer', 'exists:estados,id_estado'],
+        ]);
+
+        $rows = Ciudad::query()
+            ->where('id_estado', $validated['id_estado'])
+            ->orderByDesc('es_capital')
+            ->orderBy('nombre_ciudad')
+            ->get(['id_ciudad', 'id_estado', 'nombre_ciudad', 'es_capital']);
+
+        return response()->json(['ok' => true, 'ciudades' => $rows]);
+    }
+
+    /**
+     * Millennium — municipios por estado (dropdown dependiente; reportes por entidad federal).
+     */
+    public function municipiosPorEstado(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'id_estado' => ['required', 'integer', 'exists:estados,id_estado'],
+        ]);
+
+        $rows = Municipio::query()
+            ->where('id_estado', $validated['id_estado'])
+            ->orderBy('nombre_municipio')
+            ->get(['id_municipio', 'id_estado', 'nombre_municipio']);
+
+        return response()->json(['ok' => true, 'municipios' => $rows]);
+    }
+
+    /**
+     * Millennium — parroquias por municipio (para dropdown dependiente en formulario de clientes).
+     */
+    public function parroquias(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'id_municipio' => ['required', 'integer', 'exists:municipios,id_municipio'],
+        ]);
+
+        $rows = Parroquia::query()
+            ->where('id_municipio', $validated['id_municipio'])
+            ->orderBy('nombre_parroquia')
+            ->get(['id_parroquia', 'id_municipio', 'nombre_parroquia']);
+
+        return response()->json(['ok' => true, 'parroquias' => $rows]);
     }
 
     public function update(UpdateClienteRequest $request, Cliente $cliente): RedirectResponse

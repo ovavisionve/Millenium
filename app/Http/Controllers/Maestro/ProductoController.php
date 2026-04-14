@@ -42,12 +42,14 @@ class ProductoController extends Controller
             'categorias' => Categoria::orderBy('nombre')->get(),
             'unidades' => Producto::$unidades,
             'unidadLabels' => Producto::unidadLabels(),
+            'nombresPredeterminados' => Producto::nombresPredeterminados(),
         ]);
     }
 
     public function store(StoreProductoRequest $request): RedirectResponse
     {
         $data = $request->validated();
+        $data['codigo'] = Producto::generarCodigoUnico();
         $data['activo'] = $request->boolean('activo');
 
         Producto::create($data);
@@ -63,6 +65,7 @@ class ProductoController extends Controller
             'categorias' => Categoria::orderBy('nombre')->get(),
             'unidades' => Producto::$unidades,
             'unidadLabels' => Producto::unidadLabels(),
+            'nombresPredeterminados' => Producto::nombresPredeterminados(),
         ]);
     }
 

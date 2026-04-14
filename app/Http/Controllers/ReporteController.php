@@ -124,17 +124,21 @@ class ReporteController extends Controller
             if ($request->boolean('solo_sin_verificar')) {
                 $q->whereNull('verificado_por');
             }
+            if ($request->filled('estado_pago')) {
+                $ep = $request->string('estado_pago')->toString();
+                if ($ep === Factura::ESTADO_PAGO_ABIERTA || $ep === Factura::ESTADO_PAGO_PAGADA) {
+                    $q->where('estado_pago', $ep);
+                }
+            }
         });
 
         $q->whereHas('factura.cliente', function ($q) use ($request): void {
             if ($request->filled('vendedor_id')) {
                 $q->where('vendedor_id', $request->integer('vendedor_id'));
             }
-            if ($request->filled('zona')) {
-                $z = $request->string('zona')->trim()->toString();
-                if ($z !== '') {
-                    $q->where('zona', 'like', '%'.$z.'%');
-                }
+            $z = $this->resolveZonaFiltro($request);
+            if ($z !== '') {
+                $q->where('zona', 'like', '%'.$z.'%');
             }
         });
 
@@ -147,5 +151,18 @@ class ReporteController extends Controller
                 $p->where('categoria_id', $request->integer('categoria_id'));
             });
         }
+    }
+
+    /**
+     * Si el cliente no mandó `zona` en la query, usa el default de config (misma regla que el formulario).
+     * Si mandó `zona` vacía (p. ej. borró el campo y generó), no filtra por zona.
+     */
+    private function resolveZonaFiltro(Request $request): string
+    {
+        if ($request->has('zona')) {
+            return $request->string('zona')->trim()->toString();
+        }
+
+        return trim((string) config('millennium.reporte_zona_default', ''));
     }
 }

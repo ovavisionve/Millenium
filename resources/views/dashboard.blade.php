@@ -111,7 +111,9 @@
                 <span class="text-gray-300 dark:text-gray-600">·</span>
                 <a href="{{ route('cobranza.index') }}" class="text-millennium-dark dark:text-millennium-sand font-medium hover:underline">Cobranza</a>
                 <span class="text-gray-300 dark:text-gray-600">·</span>
-                <a href="{{ route('facturas.canceladas') }}" class="text-millennium-dark dark:text-millennium-sand font-medium hover:underline">Documentos cancelados</a>
+                <a href="{{ route('cuentas-por-cobrar.index') }}" class="text-millennium-dark dark:text-millennium-sand font-medium hover:underline">Estados de cuenta</a>
+                <span class="text-gray-300 dark:text-gray-600">·</span>
+                <a href="{{ route('facturas.index', ['alcance' => 'canceladas']) }}" class="text-millennium-dark dark:text-millennium-sand font-medium hover:underline">Historial canceladas</a>
             </div>
         </div>
     </div>

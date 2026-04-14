@@ -9,9 +9,10 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
             <p class="text-sm text-gray-600 dark:text-gray-300 px-1">
-                Combiná filtros (vendedor del cliente, zona, fechas, producto, categoría) para ver <strong>precio unitario</strong>, <strong>subtotal por línea</strong> y <strong>monto total de la factura</strong>.
-                La columna <strong>Verificación Fatimar</strong> muestra qué usuario confirmó los precios y cuándo (mismo dato que en el detalle de la factura).
-                Podés marcar <strong>solo sin verificar</strong> para revisar pendientes (por ejemplo, facturas de un día).
+                Combiná filtros (vendedor del cliente, zona, fechas, producto, categoría, <strong>estado de pago</strong>) para ver <strong>precio unitario</strong>, <strong>subtotal por línea</strong> y <strong>monto total de la factura</strong>.
+                Con <strong>Estado pago: Pagada</strong> obtenés el <strong>historial de ventas ya canceladas</strong> (misma idea que “Documentos cancelados”, pero con los cortes del reporte).
+                La columna <strong>Verificación Fatimar</strong> muestra qué usuario confirmó los precios y cuándo.
+                Podés marcar <strong>solo sin verificar</strong> para revisar pendientes.
                 El <strong>estado de cuenta</strong> lista facturas del cliente (vencidas / no vencidas) con verificación.
             </p>
 
@@ -38,7 +39,10 @@
                     </div>
                     <div>
                         <x-input-label for="zona" value="Zona (contiene)" />
-                        <x-text-input id="zona" name="zona" type="text" class="mt-1 block w-full" value="{{ request('zona') }}" placeholder="Ej. Centro" />
+                        <x-text-input id="zona" name="zona" type="text" class="mt-1 block w-full" value="{{ request()->query('zona', config('millennium.reporte_zona_default')) }}" placeholder="Ej. Centro" />
+                        @if (filled(config('millennium.reporte_zona_default')))
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Al cargar sin <code class="text-xs">?zona=</code> en la URL, este campo usa el valor predeterminado de operación.</p>
+                        @endif
                     </div>
                     <div class="sm:col-span-2">
                         <x-input-label for="producto_id" value="Producto" />
@@ -56,6 +60,14 @@
                             @foreach ($categorias as $c)
                             <option value="{{ $c->id }}" @selected((string) request('categoria_id')===(string) $c->id)>{{ $c->nombre }}</option>
                             @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <x-input-label for="estado_pago" value="Estado pago (factura)" />
+                        <select id="estado_pago" name="estado_pago" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
+                            <option value="">Todos</option>
+                            <option value="{{ \App\Models\Factura::ESTADO_PAGO_ABIERTA }}" @selected(request('estado_pago')===\App\Models\Factura::ESTADO_PAGO_ABIERTA)>Abiertas</option>
+                            <option value="{{ \App\Models\Factura::ESTADO_PAGO_PAGADA }}" @selected(request('estado_pago')===\App\Models\Factura::ESTADO_PAGO_PAGADA)>Pagadas (historial / canceladas)</option>
                         </select>
                     </div>
                     <div class="sm:col-span-2 flex items-end pb-1">
@@ -161,7 +173,7 @@
                                     {{ $linea->producto->nombre }}
                                     <div class="text-xs text-gray-500">{{ $linea->producto->categoria->nombre }}</div>
                                 </td>
-                                <td class="px-3 py-2 text-end">{{ number_format($linea->cantidad, 3) }} {{ $linea->producto->unidad }}</td>
+                                <td class="px-3 py-2 text-end">{{ number_format($linea->cantidad, 3) }} {{ \App\Models\Producto::unidadAbreviada()[$linea->producto->unidad] ?? $linea->producto->unidad }}</td>
                                 <td class="px-3 py-2 text-end">${{ number_format($linea->precio_unitario, 4) }}</td>
                                 <td class="px-3 py-2 text-end font-medium">${{ number_format($linea->subtotal, 2) }}</td>
                                 <td class="px-3 py-2 text-xs">
@@ -188,6 +200,11 @@
 
             <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 space-y-4">
                 <h3 class="font-medium text-gray-900 dark:text-gray-100">Estado de cuenta (por cliente)</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-300">
+                    Para el <strong>total que debe cada cliente</strong>, listado por <strong>zona</strong> y el <strong>PDF para enviar al cliente</strong>, usá el módulo
+                    <a href="{{ route('cuentas-por-cobrar.index') }}" class="font-medium text-millennium-dark dark:text-millennium-sand hover:underline">Estados de cuenta (por zona)</a>
+                    (<span class="whitespace-nowrap">Facturación → Estados de cuenta</span>). Los datos son en vivo: al registrar un pago en Cobranza, los saldos se rebajan solos.
+                </p>
                 <form method="get" class="flex flex-col sm:flex-row gap-3 sm:items-end flex-wrap">
                     @if (request()->boolean('generar'))
                     <input type="hidden" name="generar" value="1" />
@@ -217,11 +234,22 @@
                 </form>
 
                 @if ($clienteEstado && $estadoCuentaFacturas)
-                <p class="text-sm text-gray-600 dark:text-gray-300">
-                    <strong>{{ $clienteEstado->nombre_razon_social }}</strong>
-                    · Zona: {{ $clienteEstado->zona ?: '—' }}
-                    · Vendedor: {{ $clienteEstado->vendedor?->name ?? '—' }}
-                </p>
+                @php
+                    $totalSaldoVista = round((float) $estadoCuentaFacturas->sum('saldo_pendiente'), 2);
+                @endphp
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-sm text-gray-600 dark:text-gray-300">
+                        <strong>{{ $clienteEstado->nombre_razon_social }}</strong>
+                        · Zona: {{ $clienteEstado->zona ?: '—' }}
+                        · Vendedor: {{ $clienteEstado->vendedor?->name ?? '—' }}
+                        · <span class="font-semibold text-amber-800 dark:text-amber-200">Suma saldos (esta vista): ${{ number_format($totalSaldoVista, 2) }}</span>
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        <a href="{{ route('cuentas-por-cobrar.show', $clienteEstado) }}"><x-secondary-button type="button">Módulo / detalle</x-secondary-button></a>
+                        <a href="{{ route('cuentas-por-cobrar.estado-cuenta-pdf', $clienteEstado) }}"><x-primary-button type="button">Descargar PDF estado de cuenta</x-primary-button></a>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400">El PDF incluye solo facturas <strong>abiertas con saldo pendiente</strong> (lo que aún debe el cliente). Esta tabla puede incluir también facturas pagadas si no filtrás solo vencidas.</p>
                 <div class="overflow-x-auto border border-gray-200 dark:border-gray-600 rounded-md text-sm">
                     <table class="min-w-full text-left">
                         <thead class="bg-gray-50 dark:bg-gray-700">
@@ -266,6 +294,15 @@
                             </tr>
                             @endforelse
                         </tbody>
+                        @if ($estadoCuentaFacturas->isNotEmpty())
+                        <tfoot class="bg-gray-50 dark:bg-gray-700 font-semibold">
+                            <tr>
+                                <td colspan="4" class="px-3 py-2 text-end">Total saldo pendiente (suma columna)</td>
+                                <td class="px-3 py-2 text-end">${{ number_format($totalSaldoVista, 2) }}</td>
+                                <td colspan="3" class="px-3 py-2"></td>
+                            </tr>
+                        </tfoot>
+                        @endif
                     </table>
                 </div>
                 @endif

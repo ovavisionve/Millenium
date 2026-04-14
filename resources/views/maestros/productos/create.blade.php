@@ -19,13 +19,20 @@
                         <x-input-error class="mt-2" :messages="$errors->get('categoria_id')" />
                     </div>
                     <div>
-                        <x-input-label for="codigo" value="Código único" />
-                        <x-text-input id="codigo" name="codigo" type="text" class="mt-1 block w-full font-mono" :value="old('codigo')" required />
-                        <x-input-error class="mt-2" :messages="$errors->get('codigo')" />
+                        <x-input-label value="Código único" />
+                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400 rounded-md border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 px-3 py-2 font-mono">
+                            Se genera automáticamente al guardar (no se puede repetir).
+                        </p>
                     </div>
                     <div>
-                        <x-input-label for="nombre" value="Nombre" />
-                        <x-text-input id="nombre" name="nombre" type="text" class="mt-1 block w-full" :value="old('nombre')" required />
+                        <x-input-label for="nombre" value="Nombre estándar" />
+                        <select id="nombre" name="nombre" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
+                            <option value="">— Elegí un nombre de la lista —</option>
+                            @foreach ($nombresPredeterminados as $valor => $etiqueta)
+                                <option value="{{ $valor }}" @selected(old('nombre') === $valor)>{{ $etiqueta }}</option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Lista definida en maestros para reportes y facturación uniforme. Pedile al desarrollo ampliarla si falta algún producto típico.</p>
                         <x-input-error class="mt-2" :messages="$errors->get('nombre')" />
                     </div>
                     <div>
@@ -34,12 +41,13 @@
                         <x-input-error class="mt-2" :messages="$errors->get('descripcion')" />
                     </div>
                     <div>
-                        <x-input-label for="unidad" value="Unidad" />
+                        <x-input-label for="unidad" value="Cómo se factura" />
                         <select id="unidad" name="unidad" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
                             @foreach ($unidades as $u)
-                            <option value="{{ $u }}" @selected(old('unidad', 'kg' )===$u)>{{ $unidadLabels[$u] }}</option>
+                            <option value="{{ $u }}" @selected(old('unidad', \App\Models\Producto::UNIDAD_UNIDAD) === $u)>{{ $unidadLabels[$u] }}</option>
                             @endforeach
                         </select>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Por defecto <strong>pieza/unidad</strong>. Solo elegí <strong>kg</strong> si esa línea se factura por peso en balanza.</p>
                         <x-input-error class="mt-2" :messages="$errors->get('unidad')" />
                     </div>
                     <div class="flex items-center gap-2">

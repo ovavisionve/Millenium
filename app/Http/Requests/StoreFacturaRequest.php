@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Producto;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -12,13 +13,6 @@ class StoreFacturaRequest extends FormRequest
         return $this->user() !== null;
     }
 
-    protected function prepareForValidation(): void
-    {
-        if ($this->has('numero_factura') && $this->string('numero_factura')->trim()->isEmpty()) {
-            $this->merge(['numero_factura' => null]);
-        }
-    }
-
     /**
      * @return array<string, mixed>
      */
@@ -26,7 +20,6 @@ class StoreFacturaRequest extends FormRequest
     {
         return [
             'cliente_id' => ['required', 'exists:clientes,id'],
-            'numero_factura' => ['nullable', 'string', 'max:64', 'unique:facturas,numero_factura'],
             'fecha_emision' => ['required', 'date'],
             'dias_credito' => ['required', 'integer', 'min:0', 'max:3650'],
             'lineas' => ['required', 'array', 'min:1'],
@@ -44,7 +37,7 @@ class StoreFacturaRequest extends FormRequest
                 if (! $pid) {
                     continue;
                 }
-                $producto = \App\Models\Producto::query()->find($pid);
+                $producto = Producto::query()->find($pid);
                 if ($producto && ! $producto->activo) {
                     $v->errors()->add("lineas.$i.producto_id", 'El producto seleccionado está inactivo.');
                 }
@@ -59,7 +52,6 @@ class StoreFacturaRequest extends FormRequest
     {
         return [
             'cliente_id' => 'cliente',
-            'numero_factura' => 'número de factura',
             'fecha_emision' => 'fecha de emisión',
             'dias_credito' => 'días de crédito',
             'lineas' => 'líneas',

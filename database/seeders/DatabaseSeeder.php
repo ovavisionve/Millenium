@@ -13,6 +13,9 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        // Millennium — catálogos base para zonas predeterminadas (reportes consistentes).
+        $this->call(MunicipiosParroquiasSeeder::class);
+
         User::query()->updateOrCreate(
             ['email' => 'admin@millennium.local'],
             [

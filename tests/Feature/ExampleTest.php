@@ -14,6 +14,7 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('/');
 
-        $response->assertStatus(200);
+        // Millennium: la raíz redirige al login (no hay landing pública).
+        $response->assertRedirect(route('login'));
     }
 }

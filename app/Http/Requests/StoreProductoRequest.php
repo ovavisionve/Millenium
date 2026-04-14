@@ -20,8 +20,7 @@ class StoreProductoRequest extends FormRequest
     {
         return [
             'categoria_id' => ['required', 'exists:categorias,id'],
-            'codigo' => ['required', 'string', 'max:64', 'unique:productos,codigo'],
-            'nombre' => ['required', 'string', 'max:180'],
+            'nombre' => ['required', 'string', 'max:180', Rule::in(Producto::nombresPredeterminadosKeys())],
             'descripcion' => ['nullable', 'string', 'max:10000'],
             'unidad' => ['required', 'string', Rule::in(Producto::$unidades)],
         ];
@@ -34,7 +33,6 @@ class StoreProductoRequest extends FormRequest
     {
         return [
             'categoria_id' => 'categoría',
-            'codigo' => 'código',
             'nombre' => 'nombre',
             'descripcion' => 'descripción',
             'unidad' => 'unidad',

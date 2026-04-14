@@ -18,13 +18,25 @@
                         <x-input-error class="mt-2" :messages="$errors->get('categoria_id')" />
                     </div>
                     <div>
-                        <x-input-label for="codigo" value="Código único" />
-                        <x-text-input id="codigo" name="codigo" type="text" class="mt-1 block w-full font-mono" :value="old('codigo', $producto->codigo)" required />
-                        <x-input-error class="mt-2" :messages="$errors->get('codigo')" />
+                        <x-input-label value="Código único" />
+                        <p class="mt-1 text-sm font-mono rounded-md border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 px-3 py-2 text-gray-800 dark:text-gray-200">{{ $producto->codigo }}</p>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Asignado por el sistema; no se modifica.</p>
                     </div>
                     <div>
-                        <x-input-label for="nombre" value="Nombre" />
-                        <x-text-input id="nombre" name="nombre" type="text" class="mt-1 block w-full" :value="old('nombre', $producto->nombre)" required />
+                        <x-input-label for="nombre" value="Nombre estándar" />
+                        <select id="nombre" name="nombre" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
+                            @php
+                                $nombreActual = old('nombre', $producto->nombre);
+                                $enLista = array_key_exists($nombreActual, $nombresPredeterminados);
+                            @endphp
+                            @if (! $enLista && $nombreActual !== '')
+                                <option value="{{ $nombreActual }}" selected>— Valor anterior (no estándar): {{ $nombreActual }} —</option>
+                            @endif
+                            @foreach ($nombresPredeterminados as $valor => $etiqueta)
+                                <option value="{{ $valor }}" @selected($nombreActual === $valor)>{{ $etiqueta }}</option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Podés pasar un producto viejo a un nombre estándar eligiendo otra opción.</p>
                         <x-input-error class="mt-2" :messages="$errors->get('nombre')" />
                     </div>
                     <div>
@@ -33,12 +45,13 @@
                         <x-input-error class="mt-2" :messages="$errors->get('descripcion')" />
                     </div>
                     <div>
-                        <x-input-label for="unidad" value="Unidad" />
+                        <x-input-label for="unidad" value="Cómo se factura" />
                         <select id="unidad" name="unidad" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
                             @foreach ($unidades as $u)
                             <option value="{{ $u }}" @selected(old('unidad', $producto->unidad) === $u)>{{ $unidadLabels[$u] }}</option>
                             @endforeach
                         </select>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400"><strong>Pieza/unidad</strong> para cantidad normal; <strong>kg</strong> solo si la línea es por balanza.</p>
                         <x-input-error class="mt-2" :messages="$errors->get('unidad')" />
                     </div>
                     <div class="flex items-center gap-2">

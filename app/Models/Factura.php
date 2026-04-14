@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Factura extends Model
 {
@@ -153,5 +154,50 @@ class Factura extends Model
             $this->estado_pago = self::ESTADO_PAGO_PAGADA;
         }
         $this->save();
+    }
+
+    /**
+     * Mayor número de factura que es entero en texto puro (ej. "101011"). Ignora formatos tipo "B-8674".
+     */
+    public static function maxNumeroFacturaNumerico(): int
+    {
+        $max = 0;
+        foreach (static::query()->whereNotNull('numero_factura')->pluck('numero_factura') as $n) {
+            $s = trim((string) $n);
+            if ($s !== '' && ctype_digit($s)) {
+                $max = max($max, (int) $s);
+            }
+        }
+
+        return $max;
+    }
+
+    /** Vista previa en formulario de alta (no reserva el número). */
+    public static function vistaPreviaSiguienteNumero(): string
+    {
+        $inicial = max(1, (int) config('millennium.factura_numero_inicial', 1));
+        $maxDb = self::maxNumeroFacturaNumerico();
+
+        return (string) max($inicial, $maxDb + 1);
+    }
+
+    /**
+     * Correlativo único para nueva factura. Ajustá el piso con MILLENNIUM_FACTURA_NUMERO_INICIAL en .env.
+     */
+    public static function generarNumeroFactura(): string
+    {
+        $inicial = max(1, (int) config('millennium.factura_numero_inicial', 1));
+
+        return DB::transaction(function () use ($inicial): string {
+            $maxDb = self::maxNumeroFacturaNumerico();
+            $next = max($inicial, $maxDb + 1);
+            $candidate = (string) $next;
+            while (static::query()->where('numero_factura', $candidate)->exists()) {
+                $next++;
+                $candidate = (string) $next;
+            }
+
+            return $candidate;
+        });
     }
 }

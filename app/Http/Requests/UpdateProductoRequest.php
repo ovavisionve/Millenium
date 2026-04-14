@@ -18,12 +18,16 @@ class UpdateProductoRequest extends FormRequest
      */
     public function rules(): array
     {
-        $id = $this->route('producto')?->id;
+        $producto = $this->route('producto');
+        $keys = Producto::nombresPredeterminadosKeys();
+        $permitidosNombre = $keys;
+        if ($producto && $producto->nombre !== '' && ! in_array($producto->nombre, $keys, true)) {
+            $permitidosNombre[] = $producto->nombre;
+        }
 
         return [
             'categoria_id' => ['required', 'exists:categorias,id'],
-            'codigo' => ['required', 'string', 'max:64', Rule::unique('productos', 'codigo')->ignore($id)],
-            'nombre' => ['required', 'string', 'max:180'],
+            'nombre' => ['required', 'string', 'max:180', Rule::in($permitidosNombre)],
             'descripcion' => ['nullable', 'string', 'max:10000'],
             'unidad' => ['required', 'string', Rule::in(Producto::$unidades)],
         ];
@@ -36,7 +40,6 @@ class UpdateProductoRequest extends FormRequest
     {
         return [
             'categoria_id' => 'categoría',
-            'codigo' => 'código',
             'nombre' => 'nombre',
             'descripcion' => 'descripción',
             'unidad' => 'unidad',

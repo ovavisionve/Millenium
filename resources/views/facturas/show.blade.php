@@ -5,6 +5,8 @@
                 Factura {{ $factura->numero_factura ?? '#'.$factura->id }}
             </h2>
             <div class="flex gap-2 flex-wrap">
+                <a href="{{ route('facturas.nota-entrega', $factura) }}" target="_blank" rel="noopener"><x-secondary-button type="button">Nota de entrega</x-secondary-button></a>
+                <a href="{{ route('facturas.nota-entrega.pdf', $factura) }}"><x-secondary-button type="button">Nota PDF</x-secondary-button></a>
                 @if ((float) $factura->saldo_pendiente > 0)
                 <a href="{{ route('cobranza.pagos.create', $factura) }}"><x-primary-button type="button">Registrar pago</x-primary-button></a>
                 @endif
@@ -23,6 +25,15 @@
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @if (session('status'))
             <div class="rounded-md bg-green-50 dark:bg-green-900/20 p-4 text-sm text-green-800 dark:text-green-200">{{ session('status') }}</div>
+            @endif
+            @if (session('abrir_nota_entrega'))
+            <div class="rounded-lg border border-millennium-sand bg-millennium-sand/15 dark:bg-millennium-dark/40 p-4 text-sm text-millennium-dark dark:text-millennium-sand space-y-2">
+                <p class="font-medium">Enviá al cliente la mercancía con la nota de entrega (imprimir o PDF).</p>
+                <div class="flex flex-wrap gap-2">
+                    <a href="{{ route('facturas.nota-entrega', $factura) }}" target="_blank" rel="noopener"><x-primary-button type="button">Abrir nota de entrega</x-primary-button></a>
+                    <a href="{{ route('facturas.nota-entrega.pdf', $factura) }}"><x-secondary-button type="button">Descargar PDF</x-secondary-button></a>
+                </div>
+            </div>
             @endif
 
             <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-6 space-y-4">
@@ -119,7 +130,7 @@
                                     <div class="font-medium">{{ $linea->producto->nombre }}</div>
                                     <div class="text-xs text-gray-500">{{ $linea->producto->categoria->nombre }} · {{ $linea->producto->codigo }}</div>
                                 </td>
-                                <td class="px-4 py-2 text-end">{{ number_format($linea->cantidad, 3) }} {{ $linea->producto->unidad }}</td>
+                                <td class="px-4 py-2 text-end">{{ number_format($linea->cantidad, 3) }} {{ \App\Models\Producto::unidadAbreviada()[$linea->producto->unidad] ?? $linea->producto->unidad }}</td>
                                 <td class="px-4 py-2 text-end">${{ number_format($linea->precio_unitario, 4) }}</td>
                                 <td class="px-4 py-2 text-end font-medium">${{ number_format($linea->subtotal, 2) }}</td>
                             </tr>
@@ -133,6 +144,20 @@
                         <span class="text-gray-500 dark:text-gray-400">Fecha de emisión del documento:</span>
                         <strong>{{ $factura->fecha_emision->format('d/m/Y') }}</strong>
                     </p>
+                    <div class="px-6 py-3 border-b border-gray-200 dark:border-gray-600 flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3 bg-gray-50/50 dark:bg-gray-900/20">
+                        <form method="get" action="{{ route('facturas.movimientos-pago.pdf', $factura) }}" target="_blank" class="flex flex-wrap items-end gap-2">
+                            <div>
+                                <label for="mov_pdf_desde" class="block text-xs text-gray-500 dark:text-gray-400">Desde (recibo)</label>
+                                <input id="mov_pdf_desde" name="desde" type="date" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 text-sm shadow-sm" />
+                            </div>
+                            <div>
+                                <label for="mov_pdf_hasta" class="block text-xs text-gray-500 dark:text-gray-400">Hasta (recibo)</label>
+                                <input id="mov_pdf_hasta" name="hasta" type="date" class="rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 text-sm shadow-sm" />
+                            </div>
+                            <button type="submit" class="inline-flex items-center px-3 py-2 bg-millennium-dark dark:bg-millennium-sand text-white dark:text-millennium-dark rounded-md text-sm font-medium hover:opacity-90 h-10">Descargar PDF movimientos</button>
+                        </form>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 sm:ms-auto max-w-md">Opcional: limitá el PDF a abonos cuya <strong>fecha de recibo</strong> cae en el rango. Sin fechas, incluye todos los abonos de esta factura.</p>
+                    </div>
                     @if ($factura->pagos->isEmpty())
                     <p class="px-6 py-8 text-sm text-gray-500 text-center">Sin abonos registrados.</p>
                     @else
@@ -160,6 +185,15 @@
                                     {{ $pago->referencia ?? '—' }}
                                     @if ($pago->banco_destino)
                                     <div class="text-xs text-gray-500">{{ $pago->banco_destino }}</div>
+                                    @endif
+                                    @if ($pago->cuenta_destino)
+                                    <div class="text-xs text-gray-500">Cuenta: {{ $pago->cuenta_destino }}</div>
+                                    @endif
+                                    @if ($pago->recibido_por)
+                                    <div class="text-xs text-gray-500">Recibió: {{ $pago->recibido_por }}</div>
+                                    @endif
+                                    @if ($pago->fecha_publicacion)
+                                    <div class="text-xs text-gray-500">Publicación: {{ $pago->fecha_publicacion->format('d/m/Y') }}</div>
                                     @endif
                                 </td>
                                 <td class="px-4 py-2 text-xs">

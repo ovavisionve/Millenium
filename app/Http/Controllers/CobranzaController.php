@@ -7,15 +7,28 @@ use App\Http\Requests\StorePagosClienteRequest;
 use App\Models\Cliente;
 use App\Models\Factura;
 use App\Models\Pago;
+use App\Support\MovimientosPagoInforme;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class CobranzaController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
+        if ($request->filled('cliente_id')) {
+            $cid = $request->integer('cliente_id');
+            if ($cid > 0) {
+                $cliente = Cliente::query()->find($cid);
+                if ($cliente) {
+                    return redirect()->route('cobranza.cliente', $cliente);
+                }
+            }
+        }
+
         $q = $request->string('q')->trim()->toString();
         $clientes = collect();
 
@@ -27,13 +40,18 @@ class CobranzaController extends Controller
                 ->get();
         }
 
+        $clientesTodos = Cliente::query()
+            ->orderBy('nombre_razon_social')
+            ->get();
+
         return view('cobranza.index', [
             'q' => $q,
             'clientes' => $clientes,
+            'clientesTodos' => $clientesTodos,
         ]);
     }
 
-    public function cliente(Cliente $cliente): View
+    public function cliente(Request $request, Cliente $cliente): View
     {
         $facturas = Factura::query()
             ->where('cliente_id', $cliente->id)
@@ -43,13 +61,77 @@ class CobranzaController extends Controller
             ->orderByDesc('id')
             ->get();
 
+        $facturasComprobante = Factura::query()
+            ->where('cliente_id', $cliente->id)
+            ->orderByDesc('fecha_emision')
+            ->orderByDesc('id')
+            ->limit(120)
+            ->get(['id', 'cliente_id', 'numero_factura', 'fecha_emision', 'total', 'saldo_pendiente', 'estado_pago']);
+
+        $destacarIds = collect(explode(',', $request->string('destacar')->toString()))
+            ->map(fn (string $s) => (int) trim($s))
+            ->filter(fn (int $id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
         return view('cobranza.cliente', [
             'cliente' => $cliente,
             'facturas' => $facturas,
+            'facturasComprobante' => $facturasComprobante,
+            'facturasDestacarIds' => $destacarIds,
             'etiquetasCartera' => Factura::etiquetasCartera(),
             'metodosDivisas' => Pago::metodosDivisas(),
             'metodosBolivares' => Pago::metodosBolivares(),
         ]);
+    }
+
+    /**
+     * Comprobante PDF de movimientos para varias facturas del mismo cliente (justificar abonos).
+     *
+     * @queryParam facturas[] int Ids de facturas del cliente.
+     * @queryParam desde date|null Filtra pagos por fecha_recibo.
+     * @queryParam hasta date|null
+     */
+    public function movimientosPagoPdf(Request $request, Cliente $cliente): Response
+    {
+        $raw = $request->input('facturas', []);
+        $ids = is_array($raw)
+            ? array_values(array_filter(array_map('intval', $raw), fn (int $i) => $i > 0))
+            : array_values(array_filter(array_map('intval', explode(',', (string) $raw)), fn (int $i) => $i > 0));
+
+        if ($ids === [] || count($ids) > 50) {
+            abort(422, 'Seleccioná entre 1 y 50 facturas.');
+        }
+
+        $facturas = Factura::query()
+            ->where('cliente_id', $cliente->id)
+            ->whereIn('id', $ids)
+            ->orderBy('fecha_emision')
+            ->orderBy('id')
+            ->get();
+
+        if ($facturas->count() !== count(array_unique($ids))) {
+            abort(404);
+        }
+
+        $desde = $request->filled('desde') ? $request->date('desde')->startOfDay() : null;
+        $hasta = $request->filled('hasta') ? $request->date('hasta')->endOfDay() : null;
+
+        $pagos = Pago::query()
+            ->whereIn('factura_id', $facturas->pluck('id'))
+            ->with(['registradoPor', 'factura'])
+            ->when($desde, fn ($q) => $q->whereDate('fecha_recibo', '>=', $desde))
+            ->when($hasta, fn ($q) => $q->whereDate('fecha_recibo', '<=', $hasta))
+            ->orderBy('fecha_recibo')
+            ->orderBy('id')
+            ->get();
+
+        $periodo = MovimientosPagoInforme::textoPeriodoRecibos($desde, $hasta);
+        $data = MovimientosPagoInforme::datosParaVistaPdf($cliente, $facturas, $pagos, $periodo);
+        $pdf = Pdf::loadView('pdf.movimientos-pago', $data)->setPaper('a4', 'landscape');
+
+        return $pdf->download('movimientos-pago-cliente-'.$cliente->id.'.pdf');
     }
 
     public function create(Factura $factura): View|RedirectResponse
@@ -149,6 +231,7 @@ class CobranzaController extends Controller
         Pago::create([
             'factura_id' => $factura->id,
             'fecha_recibo' => $validated['fecha_recibo'],
+            'fecha_publicacion' => $validated['fecha_publicacion'] ?? null,
             'monto_aplicado_usd' => $monto,
             'tipo_tasa' => $validated['tipo_tasa'],
             'valor_tasa' => $validated['valor_tasa'],
@@ -157,6 +240,8 @@ class CobranzaController extends Controller
             'estado_validacion_banco' => $estadoBanco,
             'referencia' => $validated['referencia'] ?? null,
             'banco_destino' => $validated['banco_destino'] ?? null,
+            'cuenta_destino' => $validated['cuenta_destino'] ?? null,
+            'recibido_por' => $validated['recibido_por'] ?? null,
             'comprobante_path' => $comprobantePath,
             'notas' => $validated['notas'] ?? null,
             'registrado_por' => $request->user()->id,

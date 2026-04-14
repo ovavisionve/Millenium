@@ -30,6 +30,7 @@ class Pago extends Model
     protected $fillable = [
         'factura_id',
         'fecha_recibo',
+        'fecha_publicacion',
         'monto_aplicado_usd',
         'tipo_tasa',
         'valor_tasa',
@@ -38,6 +39,8 @@ class Pago extends Model
         'estado_validacion_banco',
         'referencia',
         'banco_destino',
+        'cuenta_destino',
+        'recibido_por',
         'comprobante_path',
         'notas',
         'registrado_por',
@@ -47,6 +50,7 @@ class Pago extends Model
     {
         return [
             'fecha_recibo' => 'date',
+            'fecha_publicacion' => 'date',
             'monto_aplicado_usd' => 'decimal:2',
             'valor_tasa' => 'decimal:4',
             'monto_bs' => 'decimal:2',
@@ -107,5 +111,49 @@ class Pago extends Model
         return array_intersect_key(self::metodosPago(), array_flip([
             self::METODO_PAGO_MOVIL,
         ]));
+    }
+
+    /** Zelle, Panamá, transferencia bancaria (cuenta + referencia + comprobante). */
+    public static function metodosGrupoTransferencia(): array
+    {
+        return [
+            self::METODO_ZELLE,
+            self::METODO_PANAMA,
+            self::METODO_TRANSFERENCIA,
+        ];
+    }
+
+    public static function metodosGrupoEfectivo(): array
+    {
+        return [self::METODO_EFECTIVO];
+    }
+
+    public static function metodosGrupoPagoMovil(): array
+    {
+        return [self::METODO_PAGO_MOVIL];
+    }
+
+    /** USDT: mismo bloque de campos que transferencias en divisas. */
+    public static function metodosGrupoDivisaDigital(): array
+    {
+        return [self::METODO_USDT];
+    }
+
+    /**
+     * @return 'transferencia'|'efectivo'|'pago_movil'|'usdt'
+     */
+    public static function grupoMetodo(string $metodo): string
+    {
+        if (in_array($metodo, self::metodosGrupoPagoMovil(), true)) {
+            return 'pago_movil';
+        }
+        if (in_array($metodo, self::metodosGrupoEfectivo(), true)) {
+            return 'efectivo';
+        }
+        if (in_array($metodo, self::metodosGrupoDivisaDigital(), true)) {
+            return 'usdt';
+        }
+
+        return 'transferencia';
     }
 }

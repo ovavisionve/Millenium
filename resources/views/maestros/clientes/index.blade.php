@@ -1,7 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200">Clientes</h2>
+            <div class="flex flex-col gap-1">
+                <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200">Clientes</h2>
+                <a href="{{ route('datos-maestros.index') }}" class="text-sm text-millennium-dark dark:text-millennium-sand hover:underline w-fit">← Datos maestros</a>
+            </div>
             <a href="{{ route('clientes.create') }}"><x-primary-button type="button">Nuevo cliente</x-primary-button></a>
         </div>
     </x-slot>
@@ -15,7 +18,16 @@
             <form method="get" class="flex flex-wrap gap-3 items-end">
                 <div class="flex-1 min-w-[180px]">
                     <x-input-label for="buscar" value="Buscar" />
-                    <x-text-input id="buscar" name="buscar" type="text" class="mt-1 block w-full" value="{{ request('buscar') }}" placeholder="Nombre, zona o documento" />
+                    <x-text-input id="buscar" name="buscar" type="text" class="mt-1 block w-full" value="{{ request('buscar') }}" placeholder="Nombre, correo, dirección, estado, ruta o documento" />
+                </div>
+                <div class="min-w-[200px]">
+                    <x-input-label for="zona" value="Zona comercial" />
+                    <select id="zona" name="zona" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
+                        <option value="">Todas</option>
+                        @foreach ($zonasComercialesFiltro as $cod => $etiq)
+                        <option value="{{ $cod }}" @selected(request('zona') === $cod)>{{ $etiq }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="min-w-[220px]">
                     <x-input-label for="vendedor_id" value="Vendedor" />
@@ -27,7 +39,7 @@
                     </select>
                 </div>
                 <x-secondary-button type="submit" class="h-10">Filtrar</x-secondary-button>
-                @if (request()->anyFilled(['buscar', 'vendedor_id']))
+                @if (request()->anyFilled(['buscar', 'vendedor_id', 'zona']))
                 <a href="{{ route('clientes.index') }}" class="text-sm text-gray-600 dark:text-gray-400 hover:underline">Limpiar</a>
                 @endif
             </form>
@@ -39,7 +51,10 @@
                             <tr>
                                 <th class="px-4 py-3 font-medium">Documento</th>
                                 <th class="px-4 py-3 font-medium">Nombre / razón social</th>
+                                <th class="px-4 py-3 font-medium">Correo</th>
+                                <th class="px-4 py-3 font-medium">Dirección</th>
                                 <th class="px-4 py-3 font-medium">Teléfono</th>
+                                <th class="px-4 py-3 font-medium">Estado / ubicación</th>
                                 <th class="px-4 py-3 font-medium">Zona</th>
                                 <th class="px-4 py-3 font-medium">Vendedor</th>
                                 <th class="px-4 py-3 font-medium text-end">Acciones</th>
@@ -50,7 +65,27 @@
                             <tr class="text-gray-900 dark:text-gray-100">
                                 <td class="px-4 py-3 font-mono text-xs">{{ $c->full_identificacion }}</td>
                                 <td class="px-4 py-3">{{ $c->nombre_razon_social }}</td>
+                                <td class="px-4 py-3 max-w-[10rem] truncate" title="{{ $c->email ?? '' }}">{{ $c->email ?? '—' }}</td>
+                                <td class="px-4 py-3 max-w-[12rem] truncate" title="{{ $c->direccion ?? '' }}">{{ $c->direccion ?? '—' }}</td>
                                 <td class="px-4 py-3">{{ $c->telefono ?? '—' }}</td>
+                                <td class="px-4 py-3">
+                                    @php
+                                        $u = [];
+                                        if ($c->estado) {
+                                            $u[] = $c->estado->nombre_estado;
+                                        }
+                                        if ($c->ciudad) {
+                                            $u[] = $c->ciudad->nombre_ciudad;
+                                        }
+                                        if ($c->municipio) {
+                                            $u[] = $c->municipio->nombre_municipio;
+                                        }
+                                        if ($c->parroquia) {
+                                            $u[] = $c->parroquia->nombre_parroquia;
+                                        }
+                                    @endphp
+                                    {{ $u !== [] ? implode(' · ', $u) : '—' }}
+                                </td>
                                 <td class="px-4 py-3">{{ $c->zona }}</td>
                                 <td class="px-4 py-3">{{ $c->vendedor?->name ?? '—' }}</td>
                                 <td class="px-4 py-3 text-end space-x-2 whitespace-nowrap">
@@ -63,7 +98,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="6" class="px-4 py-8 text-center text-gray-500">No hay clientes.</td>
+                                <td colspan="9" class="px-4 py-8 text-center text-gray-500">No hay clientes.</td>
                             </tr>
                             @endforelse
                         </tbody>

@@ -9,16 +9,28 @@ use App\Models\Factura;
 use App\Models\FacturaLinea;
 use App\Models\Pago;
 use App\Models\Producto;
+use App\Support\MovimientosPagoInforme;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class FacturaController extends Controller
 {
-    public function index(Request $request, string $tituloPagina = 'Facturas'): View
+    /** @var list<string> */
+    private const ALCANCES_FACTURAS = ['vigentes', 'canceladas', 'todas'];
+
+    public function index(Request $request): View
     {
+        $alcance = $request->string('alcance')->toString();
+        if (! in_array($alcance, self::ALCANCES_FACTURAS, true)) {
+            $alcance = 'vigentes';
+        }
+
         $q = Factura::query()
             ->with(['cliente', 'creadoPor', 'verificadoPor'])
             ->orderByDesc('fecha_emision')
@@ -51,28 +63,47 @@ class FacturaController extends Controller
         }
         if ($request->filled('estado_pago')) {
             $q->where('estado_pago', $request->string('estado_pago')->toString());
+        } elseif ($alcance === 'vigentes') {
+            $q->where('estado_pago', Factura::ESTADO_PAGO_ABIERTA);
+        } elseif ($alcance === 'canceladas') {
+            $q->where('estado_pago', Factura::ESTADO_PAGO_PAGADA);
         }
+
+        $tituloPagina = match ($alcance) {
+            'vigentes' => 'Facturas vigentes y cobranza',
+            'canceladas' => 'Historial — facturas canceladas',
+            default => 'Facturas (todas)',
+        };
 
         return view('facturas.index', [
             'facturas' => $q->paginate(20)->withQueryString(),
             'etiquetasCartera' => Factura::etiquetasCartera(),
             'clientes' => Cliente::orderBy('nombre_razon_social')->get(),
             'tituloPagina' => $tituloPagina,
+            'alcance' => $alcance,
         ]);
     }
 
-    /** Historial de facturas totalmente pagadas (cómo se canceló: ver detalle y movimientos). */
-    public function canceladas(Request $request): View
+    /** Compatibilidad: enlaces viejos y marcadores → misma pantalla con pestaña historial. */
+    public function canceladas(Request $request): RedirectResponse
     {
-        $request->merge(['estado_pago' => Factura::ESTADO_PAGO_PAGADA]);
-
-        return $this->index($request, 'Documentos cancelados');
+        return redirect()->route('facturas.index', array_merge(
+            $request->except('alcance'),
+            ['alcance' => 'canceladas']
+        ));
     }
 
     public function create(): View
     {
+        $clientes = Cliente::query()
+            ->with(['vendedor', 'estado', 'ciudad', 'municipio', 'parroquia'])
+            ->orderBy('nombre_razon_social')
+            ->get();
+
         return view('facturas.create', [
-            'clientes' => Cliente::orderBy('nombre_razon_social')->get(),
+            'clientes' => $clientes,
+            'clientesResumen' => $this->clientesResumenParaFactura($clientes),
+            'siguienteNumeroFactura' => Factura::vistaPreviaSiguienteNumero(),
             'productos' => Producto::query()->where('activo', true)->with('categoria')->orderBy('nombre')->get(),
             'lineaVacia' => [
                 'producto_id' => '',
@@ -89,10 +120,10 @@ class FacturaController extends Controller
         $fechaEmision = Carbon::parse($validated['fecha_emision'])->startOfDay();
         $fechaVenc = $fechaEmision->copy()->addDays((int) $validated['dias_credito']);
 
-        DB::transaction(function () use ($request, $validated, $data, $fechaEmision, $fechaVenc) {
+        $factura = DB::transaction(function () use ($request, $validated, $data, $fechaEmision, $fechaVenc) {
             $factura = Factura::create([
                 'cliente_id' => $validated['cliente_id'],
-                'numero_factura' => $validated['numero_factura'] ?? null,
+                'numero_factura' => Factura::generarNumeroFactura(),
                 'fecha_emision' => $fechaEmision,
                 'dias_credito' => (int) $validated['dias_credito'],
                 'fecha_vencimiento' => $fechaVenc,
@@ -111,10 +142,56 @@ class FacturaController extends Controller
                     'subtotal' => $linea['subtotal'],
                 ]);
             }
+
+            return $factura->load(['cliente', 'lineas.producto.categoria']);
         });
 
-        return redirect()->route('facturas.index')
-            ->with('status', 'Factura registrada correctamente.');
+        return redirect()->route('facturas.show', $factura)
+            ->with('status', 'Factura registrada correctamente. Podés imprimir o enviar la nota de entrega al cliente.')
+            ->with('abrir_nota_entrega', true);
+    }
+
+    /** Pantalla imprimible / envío al cliente (referencia a la factura). */
+    public function notaEntrega(Factura $factura): View
+    {
+        $factura->load(['cliente', 'lineas.producto.categoria']);
+
+        return view('facturas.nota-entrega', ['factura' => $factura]);
+    }
+
+    public function notaEntregaPdf(Factura $factura): Response
+    {
+        $factura->load(['cliente', 'lineas.producto.categoria']);
+        $num = $factura->numero_factura ?? (string) $factura->id;
+        $slug = preg_replace('/[^a-zA-Z0-9_-]+/', '-', $num);
+        $pdf = Pdf::loadView('pdf.nota-entrega', ['factura' => $factura])->setPaper('a4');
+
+        return $pdf->download('nota-entrega-'.$slug.'.pdf');
+    }
+
+    /** PDF comprobante de abonos (estilo operación) para una factura; opcional filtro por fecha de recibo. */
+    public function movimientosPagoPdf(Request $request, Factura $factura): Response
+    {
+        $factura->load('cliente');
+
+        $desde = $request->filled('desde') ? $request->date('desde')->startOfDay() : null;
+        $hasta = $request->filled('hasta') ? $request->date('hasta')->endOfDay() : null;
+
+        $pagos = Pago::query()
+            ->where('factura_id', $factura->id)
+            ->with(['registradoPor', 'factura'])
+            ->when($desde, fn ($q) => $q->whereDate('fecha_recibo', '>=', $desde))
+            ->when($hasta, fn ($q) => $q->whereDate('fecha_recibo', '<=', $hasta))
+            ->orderBy('fecha_recibo')
+            ->orderBy('id')
+            ->get();
+
+        $periodo = MovimientosPagoInforme::textoPeriodoRecibos($desde, $hasta);
+        $data = MovimientosPagoInforme::datosParaVistaPdf($factura->cliente, collect([$factura]), $pagos, $periodo);
+        $slug = preg_replace('/[^a-zA-Z0-9_-]+/', '-', (string) ($factura->numero_factura ?? $factura->id));
+        $pdf = Pdf::loadView('pdf.movimientos-pago', $data)->setPaper('a4', 'landscape');
+
+        return $pdf->download('movimientos-pago-factura-'.$slug.'.pdf');
     }
 
     public function show(Factura $factura): View
@@ -139,10 +216,16 @@ class FacturaController extends Controller
             'precio_unitario' => (string) $l->precio_unitario,
         ])->values()->all());
 
+        $clientes = Cliente::query()
+            ->with(['vendedor', 'estado', 'ciudad', 'municipio', 'parroquia'])
+            ->orderBy('nombre_razon_social')
+            ->get();
+
         return view('facturas.edit', [
             'factura' => $factura,
             'lineasForm' => $lineasForm,
-            'clientes' => Cliente::orderBy('nombre_razon_social')->get(),
+            'clientes' => $clientes,
+            'clientesResumen' => $this->clientesResumenParaFactura($clientes),
             'productos' => Producto::query()->where('activo', true)->with('categoria')->orderBy('nombre')->get(),
         ]);
     }
@@ -164,7 +247,6 @@ class FacturaController extends Controller
 
             $factura->update([
                 'cliente_id' => $validated['cliente_id'],
-                'numero_factura' => $validated['numero_factura'] ?? null,
                 'fecha_emision' => $fechaEmision,
                 'dias_credito' => (int) $validated['dias_credito'],
                 'fecha_vencimiento' => $fechaVenc,
@@ -244,5 +326,33 @@ class FacturaController extends Controller
         $total = round($total, 2);
 
         return ['total' => $total, 'lineas' => $lineas];
+    }
+
+    /**
+     * @param  Collection<int, Cliente>  $clientes
+     * @return array<string, array{nombre: string, rif: string, email: string|null, direccion: string|null, vendedor: string|null, zona: string|null, ubicacion: string|null}>
+     */
+    private function clientesResumenParaFactura(Collection $clientes): array
+    {
+        return $clientes->mapWithKeys(function (Cliente $c): array {
+            $ubicacion = collect([
+                $c->estado?->nombre_estado,
+                $c->ciudad?->nombre_ciudad,
+                $c->municipio?->nombre_municipio,
+                $c->parroquia?->nombre_parroquia,
+            ])->filter()->implode(' · ');
+
+            return [
+                (string) $c->id => [
+                    'nombre' => $c->nombre_razon_social,
+                    'rif' => $c->full_identificacion,
+                    'email' => $c->email ? trim((string) $c->email) : null,
+                    'direccion' => $c->direccion ? trim((string) $c->direccion) : null,
+                    'vendedor' => $c->vendedor?->name,
+                    'zona' => $c->zona ? trim((string) $c->zona) : null,
+                    'ubicacion' => $ubicacion !== '' ? $ubicacion : null,
+                ],
+            ];
+        })->all();
     }
 }
