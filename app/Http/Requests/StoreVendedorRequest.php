@@ -7,13 +7,13 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
 
 /**
- * Millennium — alta desde maestros «Vendedores»: siempre rol vendedor (no expone otros roles).
+ * Millennium — alta desde maestros «Vendedores»: siempre rol vendedor normal (no expone otros roles).
  */
 class StoreVendedorRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() !== null;
+        return $this->user()?->puedeGestionOperativaCompleta() ?? false;
     }
 
     /**

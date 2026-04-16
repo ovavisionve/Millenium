@@ -43,16 +43,14 @@
                             <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
                                 @foreach ($facturas as $f)
                                 @php
-                                    $ec = $f->estadoCartera();
-                                    $destacar = in_array($f->id, $facturasDestacarIds ?? [], true);
-                                    $oldAb = old('abonos.'.$f->id);
-                                    $tieneOldAbono = $oldAb !== null && $oldAb !== '' && (float) $oldAb > 0;
-                                    $incluirIni = $tieneOldAbono || $destacar;
+                                $ec = $f->estadoCartera();
+                                $destacar = in_array($f->id, $facturasDestacarIds ?? [], true);
+                                $oldAb = old('abonos.'.$f->id);
+                                $tieneOldAbono = $oldAb !== null && $oldAb !== '' && (float) $oldAb > 0;
+                                $incluirIni = $tieneOldAbono || $destacar;
                                 @endphp
-                                <tr id="factura-cobranza-{{ $f->id }}" x-data="{ incluir: @json($incluirIni) }" @class([
-                                    'text-gray-900 dark:text-gray-100',
-                                    'ring-2 ring-inset ring-millennium-dark/40 dark:ring-millennium-sand/60 bg-millennium-sand/10 dark:bg-millennium-dark/20' => $destacar,
-                                ])>
+                                <tr id="factura-cobranza-{{ $f->id }}" x-data="{ incluir: @json($incluirIni) }" @class([ 'text-gray-900 dark:text-gray-100' , 'ring-2 ring-inset ring-millennium-dark/40 dark:ring-millennium-sand/60 bg-millennium-sand/10 dark:bg-millennium-dark/20'=> $destacar,
+                                    ])>
                                     <td class="px-2 py-2 text-center align-middle">
                                         <input type="checkbox" x-model="incluir" @change="if (!incluir) { $refs.abono.value = '' }" class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-millennium-dark shadow-sm" title="Incluir en este registro" />
                                     </td>
@@ -88,8 +86,7 @@
                             usdt: @js(\App\Models\Pago::METODO_USDT),
                             oldValorTasa: @js(old('valor_tasa')),
                             oldMontoBs: @js(old('monto_bs')),
-                        })"
-                    >
+                        })">
                         <p class="text-xs text-gray-600 dark:text-gray-400">
                             Marcá <strong>Abonar</strong> en cada factura que entre en este pago y escribí el monto en <strong>Abono USD</strong> (no más que el saldo de la fila). Un mismo recibo puede repartirse en varias filas. Elegí primero el <strong>método de pago</strong>: solo se muestran los datos que corresponden.
                         </p>
@@ -99,12 +96,12 @@
                             <select id="metodo_pago" name="metodo_pago" x-model="metodo" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-millennium-sand focus:ring-millennium-sand" required>
                                 <optgroup label="Divisas / efectivo / transferencia">
                                     @foreach ($metodosDivisas as $val => $label)
-                                    <option value="{{ $val }}" @selected((string) old('metodo_pago', \App\Models\Pago::METODO_ZELLE) === (string) $val)>{{ $label }}</option>
+                                    <option value="{{ $val }}" @selected((string) old('metodo_pago', \App\Models\Pago::METODO_ZELLE)===(string) $val)>{{ $label }}</option>
                                     @endforeach
                                 </optgroup>
                                 <optgroup label="Bolívares">
                                     @foreach ($metodosBolivares as $val => $label)
-                                    <option value="{{ $val }}" @selected((string) old('metodo_pago', \App\Models\Pago::METODO_ZELLE) === (string) $val)>{{ $label }}</option>
+                                    <option value="{{ $val }}" @selected((string) old('metodo_pago', \App\Models\Pago::METODO_ZELLE)===(string) $val)>{{ $label }}</option>
                                     @endforeach
                                 </optgroup>
                             </select>
@@ -115,7 +112,7 @@
                             <strong>Pago móvil (Bs):</strong> indicá tasa y monto en bolívares que acreditó el banco; el sistema exige que coincida con la suma de abonos en USD (Bs / tasa). Queda pendiente de validación con el banco hasta conciliar.
                         </div>
                         <div x-show="grupo() === 'transferencia' || grupo() === 'usdt'" x-cloak class="rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-600 p-3 text-sm text-slate-700 dark:text-slate-200">
-                            <strong>Zelle / Panamá / transferencia / USDT:</strong> cuenta destino, referencia, fecha de publicación y <strong>comprobante obligatorio</strong>.
+                            <strong>Zelle / Panamá / transferencia / USDT:</strong> cuenta destino, referencia y <strong>comprobante obligatorio</strong>.
                         </div>
                         <div x-show="grupo() === 'efectivo'" x-cloak class="rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-600 p-3 text-sm text-slate-700 dark:text-slate-200">
                             <strong>Efectivo:</strong> quién recibió el dinero y <strong>foto del efectivo</strong> (obligatorio).
@@ -126,20 +123,6 @@
                                 <x-input-label for="fecha_recibo" value="Fecha del recibo / abono" />
                                 <x-text-input id="fecha_recibo" name="fecha_recibo" type="date" class="mt-1 block w-full" value="{{ old('fecha_recibo', now()->toDateString()) }}" required />
                                 <x-input-error :messages="$errors->get('fecha_recibo')" class="mt-2" />
-                            </div>
-                        </div>
-
-                        <div x-show="grupo() === 'transferencia' || grupo() === 'usdt'" x-cloak class="grid sm:grid-cols-2 gap-4">
-                            <div>
-                                <x-input-label for="fecha_publicacion" value="Fecha de publicación / acreditación" />
-                                <x-text-input id="fecha_publicacion" name="fecha_publicacion" type="date" class="mt-1 block w-full" value="{{ old('fecha_publicacion', old('fecha_recibo', now()->toDateString())) }}" x-bind:disabled="grupo() !== 'transferencia' && grupo() !== 'usdt'" x-bind:required="grupo() === 'transferencia' || grupo() === 'usdt'" />
-                                <x-input-error :messages="$errors->get('fecha_publicacion')" class="mt-2" />
-                            </div>
-                            <div class="sm:col-span-2">
-                                <x-input-label for="cuenta_destino" value="Cuenta a la cual cayó el pago" />
-                                <x-text-input id="cuenta_destino" name="cuenta_destino" type="text" class="mt-1 block w-full" value="{{ old('cuenta_destino', config('millennium.cobranza_cuenta_destino_predeterminada')) }}" placeholder="Correo Zelle, IBAN, cuenta…" x-bind:disabled="grupo() !== 'transferencia' && grupo() !== 'usdt'" x-bind:required="grupo() === 'transferencia' || grupo() === 'usdt'" />
-                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Valor predeterminado desde operación (Fátima); corregilo si aplica otra cuenta.</p>
-                                <x-input-error :messages="$errors->get('cuenta_destino')" class="mt-2" />
                             </div>
                         </div>
 
@@ -186,7 +169,13 @@
                             </div>
                             <div class="sm:col-span-2">
                                 <x-input-label for="banco_destino" value="Banco" />
-                                <x-text-input id="banco_destino" name="banco_destino" type="text" class="mt-1 block w-full" value="{{ old('banco_destino') }}" placeholder="Ej. Banesco, BNC…" x-bind:disabled="grupo() === 'efectivo'" x-bind:required="grupo() === 'pago_movil'" />
+                                <select id="banco_destino" name="banco_destino" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm" x-bind:disabled="grupo() === 'efectivo'" x-bind:required="grupo() === 'pago_movil'">
+                                    <option value="">Elegir banco</option>
+                                    @foreach ($bancos as $banco)
+                                    <option value="{{ $banco->nombre }}" @selected(old('banco_destino')===$banco->nombre)>{{ $banco->nombre }}</option>
+                                    @endforeach
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Se carga desde Datos maestros → Bancos.</p>
                                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-show="grupo() === 'pago_movil'">Obligatorio para pago móvil. Opcional en transferencias.</p>
                                 <x-input-error :messages="$errors->get('banco_destino')" class="mt-2" />
                             </div>
@@ -194,14 +183,18 @@
 
                         <div x-show="grupo() === 'transferencia' || grupo() === 'usdt' || grupo() === 'efectivo' || grupo() === 'pago_movil'" x-cloak class="sm:col-span-2">
                             <x-input-label for="comprobante" value="Comprobante (archivo o foto)" />
+                            <label class="mt-2 inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                <input type="checkbox" name="sin_comprobante" value="1" class="rounded border-gray-300 dark:border-gray-700" @checked(old('sin_comprobante')) />
+                                No tengo comprobante
+                            </label>
                             <input id="comprobante"
                                 name="comprobante"
                                 type="file"
                                 accept="image/*,.pdf"
                                 capture="environment"
                                 class="mt-1 block w-full text-sm text-gray-600 dark:text-gray-300 file:mr-4 file:rounded file:border-0 file:bg-millennium-sand/25 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-millennium-dark dark:file:bg-millennium-dark/40 dark:file:text-millennium-sand"
-                                :required="grupo() === 'transferencia' || grupo() === 'usdt' || grupo() === 'efectivo'"
-                            />
+                                x-bind:disabled="$el.form?.querySelector('input[name=sin_comprobante]')?.checked"
+                                :required="(grupo() === 'transferencia' || grupo() === 'usdt' || grupo() === 'efectivo') && !$el.form?.querySelector('input[name=sin_comprobante]')?.checked" />
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-show="grupo() === 'efectivo'">Subí foto de los billetes o del recibo de caja.</p>
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-show="grupo() === 'transferencia' || grupo() === 'usdt'">Captura del comprobante bancario. En el móvil podés usar la cámara. Máx. 5 MB.</p>
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-show="grupo() === 'pago_movil'">Opcional hasta integrar API bancaria.</p>
@@ -252,7 +245,7 @@
                                     <td class="px-2 py-1 whitespace-nowrap">{{ $fc->fecha_emision->format('d/m/Y') }}</td>
                                     <td class="px-2 py-1 text-end">${{ number_format($fc->total, 2) }}</td>
                                     <td class="px-2 py-1 text-end font-medium">${{ number_format($fc->saldo_pendiente, 2) }}</td>
-                                    <td class="px-2 py-1">{{ $fc->estado_pago === \App\Models\Factura::ESTADO_PAGO_PAGADA ? 'Pagada' : 'Abierta' }}</td>
+                                    <td class="px-2 py-1">{{ $fc->estado_pago === \App\Models\Factura::ESTADO_PAGO_PAGADA ? 'Pagada' : 'Factura por pagar' }}</td>
                                 </tr>
                                 @endforeach
                             </tbody>
@@ -281,9 +274,12 @@
     @if (! empty($facturasDestacarIds[0] ?? null))
     @push('scripts')
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             var el = document.getElementById('factura-cobranza-{{ (int) $facturasDestacarIds[0] }}');
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (el) el.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
         });
     </script>
     @endpush

@@ -3,6 +3,60 @@ import './bootstrap';
 import Alpine from 'alpinejs';
 
 document.addEventListener('alpine:init', () => {
+    Alpine.data('reporteFiltroEstado', (opts = {}) => ({
+        estadosData: Array.isArray(opts.estadosData) ? opts.estadosData : [],
+        estadoInicial: opts.estadoInicial || '',
+        estadoId: '',
+        estadoTexto: '',
+        estadoQuery: '',
+        estadoOpen: false,
+        estadoActivoIdx: 0,
+        estadosFiltrados: [],
+        init() {
+            this.estadoId = this.estadoInicial ? String(this.estadoInicial) : '';
+            const row = (this.estadosData || []).find((r) => String(r.id) === String(this.estadoId));
+            this.estadoTexto = row ? String(row.nombre) : '';
+            this.estadoQuery = this.estadoTexto;
+            this.refrescarEstadosFiltrados();
+        },
+        refrescarEstadosFiltrados() {
+            const q = String(this.estadoQuery || '').trim().toLowerCase();
+            const base = this.estadosData || [];
+            const rows = q
+                ? base.filter((r) => String(r.nombre || '').toLowerCase().includes(q))
+                : base;
+            this.estadosFiltrados = rows.slice(0, 50);
+            if (this.estadoActivoIdx >= this.estadosFiltrados.length) {
+                this.estadoActivoIdx = Math.max(0, this.estadosFiltrados.length - 1);
+            }
+        },
+        onEstadoTextoInput(ev) {
+            this.estadoOpen = true;
+            this.estadoQuery = String(ev?.target?.value ?? '');
+            this.estadoTexto = this.estadoQuery;
+            this.estadoId = '';
+            this.estadoActivoIdx = 0;
+            this.refrescarEstadosFiltrados();
+        },
+        estadoMover(delta) {
+            if (!this.estadoOpen) this.estadoOpen = true;
+            const n = this.estadosFiltrados.length;
+            if (n === 0) return;
+            const next = this.estadoActivoIdx + delta;
+            this.estadoActivoIdx = Math.min(n - 1, Math.max(0, next));
+        },
+        estadoConfirmarActivo() {
+            const e = this.estadosFiltrados[this.estadoActivoIdx];
+            if (e) this.seleccionarEstado(e);
+        },
+        seleccionarEstado(e) {
+            this.estadoId = String(e.id);
+            this.estadoTexto = String(e.nombre);
+            this.estadoQuery = this.estadoTexto;
+            this.estadoOpen = false;
+        },
+    }));
+
     Alpine.data('facturasCobranzaSeleccion', (opts = {}) => ({
         base: opts.baseUrl ?? '',
         seleccion: [],

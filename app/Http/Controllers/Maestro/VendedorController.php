@@ -30,7 +30,7 @@ class VendedorController extends Controller
     public function store(StoreVendedorRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $data['role'] = User::ROLE_VENDEDOR;
+        $data['role'] = User::ROLE_VENDEDOR_NORMAL;
         $data['is_active'] = $request->boolean('is_active', true);
         $data['email_verified_at'] = now();
 

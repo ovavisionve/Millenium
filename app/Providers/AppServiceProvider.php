@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Factura;
+use App\Policies\FacturaPolicy;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -21,6 +24,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::policy(Factura::class, FacturaPolicy::class);
+
         // Fechas legibles en español (meses en UI, p. ej. dashboard) sin tocar rutas ni lógica.
         Carbon::setLocale(config('app.locale'));
 

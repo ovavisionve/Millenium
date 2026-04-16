@@ -4,11 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreFacturaRequest;
 use App\Http\Requests\UpdateFacturaRequest;
+use App\Models\Categoria;
 use App\Models\Cliente;
 use App\Models\Factura;
 use App\Models\FacturaLinea;
 use App\Models\Pago;
-use App\Models\Producto;
+use App\Models\User;
 use App\Support\MovimientosPagoInforme;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -24,6 +25,11 @@ class FacturaController extends Controller
     /** @var list<string> */
     private const ALCANCES_FACTURAS = ['vigentes', 'canceladas', 'todas'];
 
+    public function __construct()
+    {
+        $this->authorizeResource(Factura::class, 'factura');
+    }
+
     public function index(Request $request): View
     {
         $alcance = $request->string('alcance')->toString();
@@ -31,10 +37,16 @@ class FacturaController extends Controller
             $alcance = 'vigentes';
         }
 
+        $user = $request->user();
+
         $q = Factura::query()
             ->with(['cliente', 'creadoPor', 'verificadoPor'])
             ->orderByDesc('fecha_emision')
             ->orderByDesc('id');
+
+        if ($user?->esVendedorRestringido()) {
+            $q->where('vendedor_id', $user->id);
+        }
 
         if ($request->filled('desde')) {
             $q->whereDate('fecha_emision', '>=', $request->date('desde'));
@@ -70,15 +82,24 @@ class FacturaController extends Controller
         }
 
         $tituloPagina = match ($alcance) {
-            'vigentes' => 'Facturas vigentes y cobranza',
+            'vigentes' => $user?->puedeGestionOperativaCompleta()
+                ? 'Facturas vigentes y cobranza'
+                : 'Facturas vigentes',
             'canceladas' => 'Historial — facturas canceladas',
             default => 'Facturas (todas)',
         };
 
+        $clientes = Cliente::query()
+            ->when($user?->esVendedorRestringido(), function ($cq) use ($user): void {
+                $cq->whereHas('facturas', fn ($fq) => $fq->where('vendedor_id', $user->id));
+            })
+            ->orderBy('nombre_razon_social')
+            ->get();
+
         return view('facturas.index', [
             'facturas' => $q->paginate(20)->withQueryString(),
             'etiquetasCartera' => Factura::etiquetasCartera(),
-            'clientes' => Cliente::orderBy('nombre_razon_social')->get(),
+            'clientes' => $clientes,
             'tituloPagina' => $tituloPagina,
             'alcance' => $alcance,
         ]);
@@ -87,6 +108,8 @@ class FacturaController extends Controller
     /** Compatibilidad: enlaces viejos y marcadores → misma pantalla con pestaña historial. */
     public function canceladas(Request $request): RedirectResponse
     {
+        $this->authorize('viewAny', Factura::class);
+
         return redirect()->route('facturas.index', array_merge(
             $request->except('alcance'),
             ['alcance' => 'canceladas']
@@ -103,10 +126,13 @@ class FacturaController extends Controller
         return view('facturas.create', [
             'clientes' => $clientes,
             'clientesResumen' => $this->clientesResumenParaFactura($clientes),
+            'vendedores' => User::opcionesVendedor(),
+            'metodosPagoFactura' => Pago::metodosPago(),
             'siguienteNumeroFactura' => Factura::vistaPreviaSiguienteNumero(),
-            'productos' => Producto::query()->where('activo', true)->with('categoria')->orderBy('nombre')->get(),
+            'categorias' => Categoria::query()->where('activo', true)->orderBy('nombre')->get(),
             'lineaVacia' => [
-                'producto_id' => '',
+                'categoria_id' => '',
+                'cantidad_animales' => '',
                 'cantidad' => '',
                 'precio_unitario' => '',
             ],
@@ -123,9 +149,12 @@ class FacturaController extends Controller
         $factura = DB::transaction(function () use ($request, $validated, $data, $fechaEmision, $fechaVenc) {
             $factura = Factura::create([
                 'cliente_id' => $validated['cliente_id'],
-                'numero_factura' => Factura::generarNumeroFactura(),
+                'vendedor_id' => $validated['vendedor_id'],
+                'numero_factura' => $validated['numero_factura'],
                 'fecha_emision' => $fechaEmision,
                 'dias_credito' => (int) $validated['dias_credito'],
+                'metodo_pago_previsto' => $validated['metodo_pago_previsto'],
+                'observaciones' => $validated['observaciones'],
                 'fecha_vencimiento' => $fechaVenc,
                 'total' => $data['total'],
                 'saldo_pendiente' => $data['total'],
@@ -136,42 +165,49 @@ class FacturaController extends Controller
             foreach ($data['lineas'] as $linea) {
                 FacturaLinea::create([
                     'factura_id' => $factura->id,
-                    'producto_id' => $linea['producto_id'],
+                    'categoria_id' => $linea['categoria_id'],
+                    'cantidad_animales' => $linea['cantidad_animales'],
                     'cantidad' => $linea['cantidad'],
                     'precio_unitario' => $linea['precio_unitario'],
                     'subtotal' => $linea['subtotal'],
                 ]);
             }
 
-            return $factura->load(['cliente', 'lineas.producto.categoria']);
+            return $factura->load(['cliente', 'lineas.categoria']);
         });
 
         return redirect()->route('facturas.show', $factura)
-            ->with('status', 'Factura registrada correctamente. Podés imprimir o enviar la nota de entrega al cliente.')
+            ->with('status', 'Factura registrada correctamente. Podés imprimir o enviar el documento de deuda al cliente.')
             ->with('abrir_nota_entrega', true);
     }
 
     /** Pantalla imprimible / envío al cliente (referencia a la factura). */
     public function notaEntrega(Factura $factura): View
     {
-        $factura->load(['cliente', 'lineas.producto.categoria']);
+        $this->authorize('view', $factura);
+
+        $factura->load(['cliente', 'vendedor', 'lineas.categoria']);
 
         return view('facturas.nota-entrega', ['factura' => $factura]);
     }
 
     public function notaEntregaPdf(Factura $factura): Response
     {
-        $factura->load(['cliente', 'lineas.producto.categoria']);
+        $this->authorize('view', $factura);
+
+        $factura->load(['cliente', 'vendedor', 'lineas.categoria']);
         $num = $factura->numero_factura ?? (string) $factura->id;
         $slug = preg_replace('/[^a-zA-Z0-9_-]+/', '-', $num);
         $pdf = Pdf::loadView('pdf.nota-entrega', ['factura' => $factura])->setPaper('a4');
 
-        return $pdf->download('nota-entrega-'.$slug.'.pdf');
+        return $pdf->download('deuda-'.$slug.'.pdf');
     }
 
     /** PDF comprobante de abonos (estilo operación) para una factura; opcional filtro por fecha de recibo. */
     public function movimientosPagoPdf(Request $request, Factura $factura): Response
     {
+        $this->authorize('viewPagos', $factura);
+
         $factura->load('cliente');
 
         $desde = $request->filled('desde') ? $request->date('desde')->startOfDay() : null;
@@ -196,7 +232,12 @@ class FacturaController extends Controller
 
     public function show(Factura $factura): View
     {
-        $factura->load(['cliente.vendedor', 'lineas.producto.categoria', 'creadoPor', 'verificadoPor', 'pagos.registradoPor']);
+        $user = request()->user();
+        $with = ['cliente.vendedor', 'vendedor', 'lineas.categoria', 'creadoPor', 'verificadoPor'];
+        if ($user && $user->can('viewPagos', $factura)) {
+            $with[] = 'pagos.registradoPor';
+        }
+        $factura->load($with);
 
         return view('facturas.show', [
             'factura' => $factura,
@@ -208,10 +249,11 @@ class FacturaController extends Controller
 
     public function edit(Factura $factura): View
     {
-        $factura->load('lineas.producto');
+        $factura->load('lineas.categoria');
 
         $lineasForm = old('lineas', $factura->lineas->map(fn ($l) => [
-            'producto_id' => (string) $l->producto_id,
+            'categoria_id' => (string) $l->categoria_id,
+            'cantidad_animales' => $l->cantidad_animales !== null ? (string) $l->cantidad_animales : '',
             'cantidad' => (string) $l->cantidad,
             'precio_unitario' => (string) $l->precio_unitario,
         ])->values()->all());
@@ -226,7 +268,9 @@ class FacturaController extends Controller
             'lineasForm' => $lineasForm,
             'clientes' => $clientes,
             'clientesResumen' => $this->clientesResumenParaFactura($clientes),
-            'productos' => Producto::query()->where('activo', true)->with('categoria')->orderBy('nombre')->get(),
+            'vendedores' => User::opcionesVendedor(),
+            'metodosPagoFactura' => Pago::metodosPago(),
+            'categorias' => Categoria::query()->where('activo', true)->orderBy('nombre')->get(),
         ]);
     }
 
@@ -247,8 +291,12 @@ class FacturaController extends Controller
 
             $factura->update([
                 'cliente_id' => $validated['cliente_id'],
+                'vendedor_id' => $validated['vendedor_id'],
+                'numero_factura' => $validated['numero_factura'],
                 'fecha_emision' => $fechaEmision,
                 'dias_credito' => (int) $validated['dias_credito'],
+                'metodo_pago_previsto' => $validated['metodo_pago_previsto'],
+                'observaciones' => $validated['observaciones'],
                 'fecha_vencimiento' => $fechaVenc,
                 'total' => $nuevoTotal,
                 'saldo_pendiente' => $nuevoSaldo,
@@ -260,7 +308,8 @@ class FacturaController extends Controller
             foreach ($data['lineas'] as $linea) {
                 FacturaLinea::create([
                     'factura_id' => $factura->id,
-                    'producto_id' => $linea['producto_id'],
+                    'categoria_id' => $linea['categoria_id'],
+                    'cantidad_animales' => $linea['cantidad_animales'],
                     'cantidad' => $linea['cantidad'],
                     'precio_unitario' => $linea['precio_unitario'],
                     'subtotal' => $linea['subtotal'],
@@ -287,10 +336,9 @@ class FacturaController extends Controller
 
     public function verificar(Request $request, Factura $factura): RedirectResponse
     {
+        $this->authorize('verificar', $factura);
+
         $user = $request->user();
-        if (! $factura->puedeVerificar($user)) {
-            abort(403, 'No puedes verificar esta factura.');
-        }
 
         $factura->update([
             'verificado_por' => $user->id,
@@ -298,12 +346,12 @@ class FacturaController extends Controller
         ]);
 
         return redirect()->route('facturas.show', $factura)
-            ->with('status', 'Precios verificados (Fatimar) con el usuario '.$user->name.'. Queda registrado en el reporte y en el detalle de la factura.');
+            ->with('status', 'Verificación registrada con el usuario '.$user->name.'. Queda registrado en el reporte y en el detalle de la factura.');
     }
 
     /**
-     * @param  array<int, array{producto_id: int|string, cantidad: float|int|string, precio_unitario: float|int|string}>  $lineasInput
-     * @return array{total: float, lineas: list<array{producto_id: int, cantidad: string, precio_unitario: string, subtotal: float}>}
+     * @param  array<int, array{categoria_id: int|string, cantidad_animales?: int|null, cantidad: float|int|string, precio_unitario: float|int|string}>  $lineasInput
+     * @return array{total: float, lineas: list<array{categoria_id: int, cantidad_animales: int|null, cantidad: string, precio_unitario: string, subtotal: float}>}
      */
     private function totalesDesdeLineas(array $lineasInput): array
     {
@@ -315,8 +363,10 @@ class FacturaController extends Controller
             $pu = (float) $row['precio_unitario'];
             $sub = round($cant * $pu, 2);
             $total += $sub;
+            $anim = $row['cantidad_animales'] ?? null;
             $lineas[] = [
-                'producto_id' => (int) $row['producto_id'],
+                'categoria_id' => (int) $row['categoria_id'],
+                'cantidad_animales' => $anim !== null && $anim !== '' ? (int) $anim : null,
                 'cantidad' => number_format($cant, 3, '.', ''),
                 'precio_unitario' => number_format($pu, 4, '.', ''),
                 'subtotal' => $sub,
@@ -330,7 +380,7 @@ class FacturaController extends Controller
 
     /**
      * @param  Collection<int, Cliente>  $clientes
-     * @return array<string, array{nombre: string, rif: string, email: string|null, direccion: string|null, vendedor: string|null, zona: string|null, ubicacion: string|null}>
+     * @return array<string, array{nombre: string, rif: string, email: string|null, direccion: string|null, vendedor: string|null, vendedor_id: string, zona: string|null, ubicacion: string|null}>
      */
     private function clientesResumenParaFactura(Collection $clientes): array
     {
@@ -349,6 +399,7 @@ class FacturaController extends Controller
                     'email' => $c->email ? trim((string) $c->email) : null,
                     'direccion' => $c->direccion ? trim((string) $c->direccion) : null,
                     'vendedor' => $c->vendedor?->name,
+                    'vendedor_id' => $c->vendedor_id !== null ? (string) $c->vendedor_id : '',
                     'zona' => $c->zona ? trim((string) $c->zona) : null,
                     'ubicacion' => $ubicacion !== '' ? $ubicacion : null,
                 ],

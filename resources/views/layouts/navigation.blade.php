@@ -14,7 +14,7 @@
                 <!-- Logo -->
                 {{-- Millennium: logo acotado — PNG ancho intrínseco sin tope empuja los `<x-nav-link>` fuera de vista --}}
                 <div class="shrink-0 flex items-center max-w-[148px] sm:max-w-[160px]">
-                    <a href="{{ route('dashboard') }}" class="block w-full rounded-md focus:outline-none focus:ring-2 focus:ring-millennium-sand focus:ring-offset-2">
+                    <a href="{{ Auth::user()->esVendedorRestringido() ? route('facturas.index') : route('dashboard') }}" class="block w-full rounded-md focus:outline-none focus:ring-2 focus:ring-millennium-sand focus:ring-offset-2">
                         <x-brand-logo variant="nav" class="w-full" />
                         <span class="sr-only">{{ config('app.name', 'Millennium') }}</span>
                     </a>
@@ -23,16 +23,19 @@
                 <!-- Navigation Links -->
                 {{-- Millennium: sin scroll horizontal en escritorio (se ve feo y recorta dropdowns); agrupamos maestros para que quepa --}}
                 <div class="hidden space-x-6 lg:space-x-8 sm:-my-px sm:ms-8 lg:ms-10 sm:flex min-w-0">
+                    @if (Auth::user()->puedeGestionOperativaCompleta())
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
-                    {{-- Millennium — Datos maestros: agrupa clientes/categorías/productos para simplificar el menú --}}
+                    @endif
+                    {{-- Millennium — Datos maestros: agrupa clientes/categorías y vendedores --}}
+                    @if (Auth::user()->puedeGestionOperativaCompleta())
                     <div class="flex items-center">
                         <x-dropdown align="left" width="56">
                             <x-slot name="trigger">
                                 @php
-                                    $maestrosActive = request()->routeIs('datos-maestros.*') || request()->routeIs('clientes.*') || request()->routeIs('categorias.*') || request()->routeIs('productos.*')
-                                        || request()->routeIs('vendedores.*');
+                                    $maestrosActive = request()->routeIs('datos-maestros.*') || request()->routeIs('clientes.*') || request()->routeIs('categorias.*')
+                                        || request()->routeIs('bancos.*') || request()->routeIs('vendedores.*');
                                     $maestrosClasses = $maestrosActive
                                         ? 'inline-flex items-center px-1 pt-1 border-b-2 border-millennium-sand text-sm font-medium leading-5 text-millennium-dark dark:text-millennium-sand focus:outline-none focus:border-millennium-dark transition duration-150 ease-in-out'
                                         : 'inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 dark:text-gray-400 hover:text-millennium-dark dark:hover:text-millennium-sand hover:border-millennium-sand/40 dark:hover:border-millennium-sand/30 focus:outline-none focus:text-millennium-dark dark:focus:text-millennium-sand focus:border-millennium-sand/40 transition duration-150 ease-in-out';
@@ -48,12 +51,14 @@
                                 <x-dropdown-link :href="route('datos-maestros.index')">Resumen datos maestros</x-dropdown-link>
                                 <x-dropdown-link :href="route('clientes.index')">Clientes</x-dropdown-link>
                                 <x-dropdown-link :href="route('categorias.index')">Categorías</x-dropdown-link>
-                                <x-dropdown-link :href="route('productos.index')">Productos</x-dropdown-link>
+                                <x-dropdown-link :href="route('bancos.index')">Bancos</x-dropdown-link>
                                 <x-dropdown-link :href="route('vendedores.index')">Vendedores</x-dropdown-link>
                             </x-slot>
                         </x-dropdown>
                     </div>
+                    @endif
                     {{-- Millennium — Facturación: agrupa facturas, historial pagado, cobranza y reportes --}}
+                    @if (Auth::user()->puedeGestionOperativaCompleta())
                     <div class="flex items-center">
                         <x-dropdown align="left" width="56">
                             <x-slot name="trigger">
@@ -79,6 +84,11 @@
                             </x-slot>
                         </x-dropdown>
                     </div>
+                    @else
+                    <x-nav-link :href="route('facturas.index')" :active="request()->routeIs('facturas.*')">
+                        Facturas
+                    </x-nav-link>
+                    @endif
                     @if (Auth::user()->isAdmin())
                     <x-nav-link :href="route('usuarios.index')" :active="request()->routeIs('usuarios.*')">
                         Usuarios
@@ -137,11 +147,14 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden border-t border-millennium-dark/10">
         <div class="pt-2 pb-3 space-y-1">
+            @if (Auth::user()->puedeGestionOperativaCompleta())
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            @endif
             {{-- Millennium — Datos maestros (móvil): grupo expandible --}}
-            <div x-data="{ maestrosOpen: {{ (request()->routeIs('datos-maestros.*') || request()->routeIs('clientes.*') || request()->routeIs('categorias.*') || request()->routeIs('productos.*') || request()->routeIs('vendedores.*')) ? 'true' : 'false' }} }" class="border-l-4 border-transparent">
+            @if (Auth::user()->puedeGestionOperativaCompleta())
+            <div x-data="{ maestrosOpen: {{ (request()->routeIs('datos-maestros.*') || request()->routeIs('clientes.*') || request()->routeIs('categorias.*') || request()->routeIs('bancos.*') || request()->routeIs('vendedores.*')) ? 'true' : 'false' }} }" class="border-l-4 border-transparent">
                 <button type="button"
                     class="w-full flex items-center justify-between ps-3 pe-4 py-3 sm:py-2 text-start text-base font-medium text-gray-600 dark:text-gray-400 hover:text-millennium-dark dark:hover:text-millennium-sand hover:bg-millennium-sand/10 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-millennium-sand/40"
                     @click="maestrosOpen = !maestrosOpen"
@@ -162,14 +175,16 @@
                     <x-responsive-nav-link :href="route('categorias.index')" :active="request()->routeIs('categorias.*')">
                         Categorías
                     </x-responsive-nav-link>
-                    <x-responsive-nav-link :href="route('productos.index')" :active="request()->routeIs('productos.*')">
-                        Productos
+                    <x-responsive-nav-link :href="route('bancos.index')" :active="request()->routeIs('bancos.*')">
+                        Bancos
                     </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('vendedores.index')" :active="request()->routeIs('vendedores.*')">
                         Vendedores
                     </x-responsive-nav-link>
                 </div>
             </div>
+            @endif
+            @if (Auth::user()->puedeGestionOperativaCompleta())
             <div x-data="{ facturacionOpen: {{ (request()->routeIs('facturas.*') || request()->routeIs('cobranza.*') || request()->routeIs('reportes.*') || request()->routeIs('cuentas-por-cobrar.*') || request()->routeIs('estados-cuenta.*')) ? 'true' : 'false' }} }" class="border-l-4 border-transparent">
                 <button type="button"
                     class="w-full flex items-center justify-between ps-3 pe-4 py-3 sm:py-2 text-start text-base font-medium text-gray-600 dark:text-gray-400 hover:text-millennium-dark dark:hover:text-millennium-sand hover:bg-millennium-sand/10 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-millennium-sand/40"
@@ -196,6 +211,11 @@
                     </x-responsive-nav-link>
                 </div>
             </div>
+            @else
+            <x-responsive-nav-link :href="route('facturas.index')" :active="request()->routeIs('facturas.*')">
+                Facturas
+            </x-responsive-nav-link>
+            @endif
             @if (Auth::user()->isAdmin())
             <x-responsive-nav-link :href="route('usuarios.index')" :active="request()->routeIs('usuarios.*')">
                 Usuarios

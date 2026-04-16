@@ -16,7 +16,11 @@ class StorePagoRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        foreach (['monto_bs', 'referencia', 'banco_destino', 'notas', 'cuenta_destino', 'recibido_por', 'fecha_publicacion'] as $key) {
+        $this->merge([
+            'sin_comprobante' => $this->boolean('sin_comprobante'),
+        ]);
+
+        foreach (['monto_bs', 'referencia', 'banco_destino', 'notas', 'recibido_por'] as $key) {
             if ($this->has($key) && $this->string($key)->trim()->isEmpty()) {
                 $this->merge([$key => null]);
             }
@@ -36,13 +40,6 @@ class StorePagoRequest extends FormRequest
             $this->merge(['valor_tasa' => config('millennium.cobranza_tasa_placeholder_divisa', 1)]);
         }
 
-        $transferLike = in_array($grupo, ['transferencia', 'usdt'], true);
-        if ($transferLike && ! $this->filled('cuenta_destino')) {
-            $def = config('millennium.cobranza_cuenta_destino_predeterminada');
-            if (is_string($def) && trim($def) !== '') {
-                $this->merge(['cuenta_destino' => trim($def)]);
-            }
-        }
     }
 
     /**
@@ -54,12 +51,14 @@ class StorePagoRequest extends FormRequest
         $metodos = array_keys(Pago::metodosPago());
         $metodo = $this->string('metodo_pago')->toString();
         $grupo = $metodo !== '' ? Pago::grupoMetodo($metodo) : '';
+        $sinComprobante = $this->boolean('sin_comprobante');
 
         $rules = [
             'fecha_recibo' => ['required', 'date'],
             'monto_aplicado_usd' => ['required', 'numeric', 'min:0.01'],
             'metodo_pago' => ['required', Rule::in($metodos)],
             'notas' => ['nullable', 'string', 'max:2000'],
+            'sin_comprobante' => ['boolean'],
         ];
 
         if ($grupo === 'pago_movil') {
@@ -68,8 +67,6 @@ class StorePagoRequest extends FormRequest
             $rules['monto_bs'] = ['required', 'numeric', 'min:0.01'];
             $rules['referencia'] = ['required', 'string', 'max:255'];
             $rules['banco_destino'] = ['required', 'string', 'max:100'];
-            $rules['fecha_publicacion'] = ['nullable', 'date'];
-            $rules['cuenta_destino'] = ['nullable', 'string', 'max:255'];
             $rules['recibido_por'] = ['nullable', 'string', 'max:255'];
             $rules['comprobante'] = ['nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,gif,webp,pdf'];
         } elseif ($grupo === 'efectivo') {
@@ -79,19 +76,19 @@ class StorePagoRequest extends FormRequest
             $rules['recibido_por'] = ['required', 'string', 'max:255'];
             $rules['referencia'] = ['nullable', 'string', 'max:255'];
             $rules['banco_destino'] = ['nullable', 'string', 'max:100'];
-            $rules['fecha_publicacion'] = ['nullable', 'date'];
-            $rules['cuenta_destino'] = ['nullable', 'string', 'max:255'];
-            $rules['comprobante'] = ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,gif,webp,pdf'];
+            $rules['comprobante'] = $sinComprobante
+                ? ['nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,gif,webp,pdf']
+                : ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,gif,webp,pdf'];
         } else {
             $rules['tipo_tasa'] = ['required', Rule::in($tiposTasa)];
             $rules['valor_tasa'] = ['required', 'numeric', 'min:0.0001'];
             $rules['monto_bs'] = ['nullable', 'numeric', 'min:0'];
-            $rules['fecha_publicacion'] = ['required', 'date'];
-            $rules['cuenta_destino'] = ['required', 'string', 'max:255'];
             $rules['referencia'] = ['required', 'string', 'max:255'];
             $rules['banco_destino'] = ['nullable', 'string', 'max:100'];
             $rules['recibido_por'] = ['nullable', 'string', 'max:255'];
-            $rules['comprobante'] = ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,gif,webp,pdf'];
+            $rules['comprobante'] = $sinComprobante
+                ? ['nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,gif,webp,pdf']
+                : ['required', 'file', 'max:5120', 'mimes:jpg,jpeg,png,gif,webp,pdf'];
         }
 
         return $rules;

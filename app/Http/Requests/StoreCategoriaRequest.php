@@ -2,13 +2,22 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Categoria;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreCategoriaRequest extends FormRequest
 {
     public function authorize(): bool
     {
         return $this->user() !== null;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'activo' => $this->boolean('activo'),
+        ]);
     }
 
     /**
@@ -20,6 +29,8 @@ class StoreCategoriaRequest extends FormRequest
             'codigo' => ['required', 'string', 'max:32', 'unique:categorias,codigo'],
             'nombre' => ['required', 'string', 'max:120'],
             'descripcion' => ['nullable', 'string', 'max:5000'],
+            'unidad' => ['required', 'string', Rule::in(Categoria::$unidades)],
+            'activo' => ['boolean'],
         ];
     }
 
@@ -32,6 +43,8 @@ class StoreCategoriaRequest extends FormRequest
             'codigo' => 'código',
             'nombre' => 'nombre',
             'descripcion' => 'descripción',
+            'unidad' => 'unidad de facturación',
+            'activo' => 'activo',
         ];
     }
 }

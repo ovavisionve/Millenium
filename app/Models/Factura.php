@@ -25,9 +25,12 @@ class Factura extends Model
 
     protected $fillable = [
         'cliente_id',
+        'vendedor_id',
         'numero_factura',
         'fecha_emision',
         'dias_credito',
+        'metodo_pago_previsto',
+        'observaciones',
         'fecha_vencimiento',
         'total',
         'saldo_pendiente',
@@ -54,6 +57,16 @@ class Factura extends Model
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    /**
+     * Vendedor registrado en la factura (puede diferir del maestro del cliente en el momento de la venta).
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function vendedor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'vendedor_id');
     }
 
     /**
@@ -86,6 +99,16 @@ class Factura extends Model
     public function pagos(): HasMany
     {
         return $this->hasMany(Pago::class)->orderByDesc('fecha_recibo')->orderByDesc('id');
+    }
+
+    /** Etiqueta legible del método de pago que el cliente indicó al facturar (mismos códigos que cobranza). */
+    public function etiquetaMetodoPagoPrevisto(): ?string
+    {
+        if ($this->metodo_pago_previsto === null || $this->metodo_pago_previsto === '') {
+            return null;
+        }
+
+        return Pago::metodosPago()[$this->metodo_pago_previsto] ?? $this->metodo_pago_previsto;
     }
 
     public function estadoCartera(?Carbon $referencia = null): string
@@ -121,15 +144,11 @@ class Factura extends Model
 
     public function puedeVerificar(User $user): bool
     {
-        if ($this->estaVerificada()) {
-            return false;
-        }
-
-        return in_array($user->role, [User::ROLE_ADMIN, User::ROLE_VERIFICADOR, User::ROLE_VENDEDOR], true) && $user->is_active;
+        return $user->can('verificar', $this);
     }
 
-    /** Texto para listados: quién verificó precios (Fatimar) y cuándo. */
-    public function textoVerificacionFatimar(): ?string
+    /** Texto para listados: quién verificó y cuándo. */
+    public function textoVerificacion(): ?string
     {
         if (! $this->estaVerificada()) {
             return null;
@@ -139,8 +158,8 @@ class Factura extends Model
         $fecha = $this->fecha_verificacion?->format('d/m/Y H:i');
 
         return $fecha
-            ? 'Fatimar: '.$nombre.' verificó precios · '.$fecha
-            : 'Fatimar: '.$nombre.' verificó precios';
+            ? $nombre.' verificó · '.$fecha
+            : $nombre.' verificó';
     }
 
     /** Descuenta saldo en USD y marca pagada si corresponde. */

@@ -1,3 +1,7 @@
+@php
+    $puedeOperativa = Auth::user()->puedeGestionOperativaCompleta();
+    $puedeVerCobranzaDetalle = Auth::user()->can('viewPagos', $factura);
+@endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -5,13 +9,17 @@
                 Factura {{ $factura->numero_factura ?? '#'.$factura->id }}
             </h2>
             <div class="flex gap-2 flex-wrap">
-                <a href="{{ route('facturas.nota-entrega', $factura) }}" target="_blank" rel="noopener"><x-secondary-button type="button">Nota de entrega</x-secondary-button></a>
-                <a href="{{ route('facturas.nota-entrega.pdf', $factura) }}"><x-secondary-button type="button">Nota PDF</x-secondary-button></a>
-                @if ((float) $factura->saldo_pendiente > 0)
+                <a href="{{ route('facturas.nota-entrega', $factura) }}" target="_blank" rel="noopener"><x-secondary-button type="button">Deuda (imprimir)</x-secondary-button></a>
+                <a href="{{ route('facturas.nota-entrega.pdf', $factura) }}"><x-secondary-button type="button">Deuda PDF</x-secondary-button></a>
+                @if ($puedeOperativa && (float) $factura->saldo_pendiente > 0)
                 <a href="{{ route('cobranza.pagos.create', $factura) }}"><x-primary-button type="button">Registrar pago</x-primary-button></a>
                 @endif
+                @if ($puedeOperativa)
                 <a href="{{ route('cobranza.cliente', $factura->cliente) }}"><x-secondary-button type="button">Cobranza cliente</x-secondary-button></a>
+                @endif
+                @can('update', $factura)
                 <a href="{{ route('facturas.edit', $factura) }}"><x-secondary-button type="button">Editar</x-secondary-button></a>
+                @endcan
                 <a href="{{ route('facturas.index') }}"><x-secondary-button type="button">Lista</x-secondary-button></a>
             </div>
         </div>
@@ -28,10 +36,10 @@
             @endif
             @if (session('abrir_nota_entrega'))
             <div class="rounded-lg border border-millennium-sand bg-millennium-sand/15 dark:bg-millennium-dark/40 p-4 text-sm text-millennium-dark dark:text-millennium-sand space-y-2">
-                <p class="font-medium">Enviá al cliente la mercancía con la nota de entrega (imprimir o PDF).</p>
+                <p class="font-medium">Enviá al cliente el documento de deuda (imprimir o PDF).</p>
                 <div class="flex flex-wrap gap-2">
-                    <a href="{{ route('facturas.nota-entrega', $factura) }}" target="_blank" rel="noopener"><x-primary-button type="button">Abrir nota de entrega</x-primary-button></a>
-                    <a href="{{ route('facturas.nota-entrega.pdf', $factura) }}"><x-secondary-button type="button">Descargar PDF</x-secondary-button></a>
+                    <a href="{{ route('facturas.nota-entrega', $factura) }}" target="_blank" rel="noopener"><x-primary-button type="button">Abrir documento de deuda</x-primary-button></a>
+                    <a href="{{ route('facturas.nota-entrega.pdf', $factura) }}"><x-secondary-button type="button">Descargar PDF deuda</x-secondary-button></a>
                 </div>
             </div>
             @endif
@@ -42,8 +50,9 @@
                         <p class="text-sm text-gray-500 dark:text-gray-400">Cliente</p>
                         <p class="font-medium text-lg">{{ $factura->cliente->nombre_razon_social }}</p>
                         <p class="text-sm text-gray-600 dark:text-gray-300">Documento: {{ $factura->cliente->full_identificacion }} · Zona: {{ $factura->cliente->zona }}</p>
+                        <p class="text-sm">Vendedor (factura): <strong>{{ $factura->vendedor?->name ?? '—' }}</strong></p>
                         @if ($factura->cliente->vendedor)
-                        <p class="text-sm">Vendedor asignado: {{ $factura->cliente->vendedor->name }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Vendedor en maestro del cliente: {{ $factura->cliente->vendedor->name }}</p>
                         @endif
                     </div>
                     <div class="text-end space-y-2">
@@ -78,13 +87,23 @@
                         <dt class="text-gray-500 dark:text-gray-400">Saldo pendiente</dt>
                         <dd class="font-medium">${{ number_format($factura->saldo_pendiente, 2) }}</dd>
                     </div>
+                    <div class="sm:col-span-2">
+                        <dt class="text-gray-500 dark:text-gray-400">Forma de pago indicada por el cliente</dt>
+                        <dd class="font-medium">{{ $factura->etiquetaMetodoPagoPrevisto() ?? '—' }}</dd>
+                    </div>
+                    @if ($factura->observaciones)
+                    <div class="sm:col-span-2">
+                        <dt class="text-gray-500 dark:text-gray-400">Observaciones</dt>
+                        <dd class="font-medium text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{{ $factura->observaciones }}</dd>
+                    </div>
+                    @endif
                 </dl>
 
                 <div class="border-t border-gray-200 dark:border-gray-600 pt-4 space-y-2 text-sm">
                     <p><span class="text-gray-500">Registrada por:</span> <strong>{{ $factura->creadoPor->name }}</strong> · {{ $factura->created_at->format('d/m/Y H:i') }}</p>
                     @if ($factura->verificadoPor)
                     <p class="text-green-700 dark:text-green-300">
-                        <span class="text-gray-500 dark:text-gray-400">Verificación de precios (Fatimar):</span>
+                        <span class="text-gray-500 dark:text-gray-400">Verificación:</span>
                         <strong>{{ $factura->verificadoPor->name }}</strong>
                         @if ($factura->verificadoPor->email)
                         <span class="text-xs text-gray-500 dark:text-gray-400">({{ $factura->verificadoPor->email }})</span>
@@ -94,15 +113,15 @@
                         @endif
                     </p>
                     @else
-                    <p class="text-amber-700 dark:text-amber-300">Pendiente de verificación de precios (Fatimar). En reportes podrás filtrar las que faltan por revisar.</p>
+                    <p class="text-amber-700 dark:text-amber-300">Pendiente de verificación.@if ($puedeOperativa) En reportes podrás filtrar las que faltan por revisar.@endif</p>
                     @endif
                 </div>
 
                 @if ($factura->puedeVerificar(auth()->user()))
                 <form method="post" action="{{ route('facturas.verificar', $factura) }}" class="pt-2">
                     @csrf
-                    <x-primary-button type="submit" onclick="return confirm('¿Confirmar con tu usuario que los precios y montos de esta factura son correctos? Quedará registrado como verificación Fatimar.');">
-                        Verificar precios con mi usuario (Fatimar)
+                    <x-primary-button type="submit" onclick="return confirm('¿Confirmar con tu usuario que esta factura es correcta? Quedará registrada la verificación.');">
+                        Verificar con mi usuario
                     </x-primary-button>
                 </form>
                 @endif
@@ -111,14 +130,17 @@
             <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg overflow-hidden" x-data="{ tab: 'lineas' }">
                 <div class="px-6 py-3 border-b border-gray-200 dark:border-gray-600 flex gap-4">
                     <button type="button" @click="tab = 'lineas'" :class="tab === 'lineas' ? 'font-semibold text-millennium-dark dark:text-millennium-sand border-b-2 border-millennium-sand -mb-px pb-1' : 'text-gray-500 dark:text-gray-400'" class="text-sm">Líneas</button>
+                    @if ($puedeVerCobranzaDetalle)
                     <button type="button" @click="tab = 'movimientos'" :class="tab === 'movimientos' ? 'font-semibold text-millennium-dark dark:text-millennium-sand border-b-2 border-millennium-sand -mb-px pb-1' : 'text-gray-500 dark:text-gray-400'" class="text-sm">Movimientos (cobranza)</button>
+                    @endif
                 </div>
                 <div x-show="tab === 'lineas'" class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead class="bg-gray-50 dark:bg-gray-700">
                             <tr>
-                                <th class="px-4 py-2 text-left">Producto</th>
-                                <th class="px-4 py-2 text-end">Cantidad</th>
+                                <th class="px-4 py-2 text-left">Categoría</th>
+                                <th class="px-4 py-2 text-end">Cant. animales</th>
+                                <th class="px-4 py-2 text-end">unidad/Kilos</th>
                                 <th class="px-4 py-2 text-end">P. unit.</th>
                                 <th class="px-4 py-2 text-end">Subtotal</th>
                             </tr>
@@ -127,10 +149,11 @@
                             @foreach ($factura->lineas as $linea)
                             <tr>
                                 <td class="px-4 py-2">
-                                    <div class="font-medium">{{ $linea->producto->nombre }}</div>
-                                    <div class="text-xs text-gray-500">{{ $linea->producto->categoria->nombre }} · {{ $linea->producto->codigo }}</div>
+                                    <div class="font-medium">{{ $linea->categoria->nombre }}</div>
+                                    <div class="text-xs text-gray-500 font-mono">{{ $linea->categoria->codigo }}</div>
                                 </td>
-                                <td class="px-4 py-2 text-end">{{ number_format($linea->cantidad, 3) }} {{ \App\Models\Producto::unidadAbreviada()[$linea->producto->unidad] ?? $linea->producto->unidad }}</td>
+                                <td class="px-4 py-2 text-end">{{ $linea->cantidad_animales !== null ? number_format($linea->cantidad_animales, 0, ',', '.') : '—' }}</td>
+                                <td class="px-4 py-2 text-end">{{ number_format($linea->cantidad, 3) }} {{ \App\Models\Categoria::unidadAbreviada()[$linea->categoria->unidad] ?? $linea->categoria->unidad }}</td>
                                 <td class="px-4 py-2 text-end">${{ number_format($linea->precio_unitario, 4) }}</td>
                                 <td class="px-4 py-2 text-end font-medium">${{ number_format($linea->subtotal, 2) }}</td>
                             </tr>
@@ -139,6 +162,7 @@
                     </table>
                 </div>
 
+                @if ($puedeVerCobranzaDetalle)
                 <div x-show="tab === 'movimientos'" class="overflow-x-auto">
                     <p class="px-6 py-3 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-600">
                         <span class="text-gray-500 dark:text-gray-400">Fecha de emisión del documento:</span>
@@ -186,14 +210,8 @@
                                     @if ($pago->banco_destino)
                                     <div class="text-xs text-gray-500">{{ $pago->banco_destino }}</div>
                                     @endif
-                                    @if ($pago->cuenta_destino)
-                                    <div class="text-xs text-gray-500">Cuenta: {{ $pago->cuenta_destino }}</div>
-                                    @endif
                                     @if ($pago->recibido_por)
                                     <div class="text-xs text-gray-500">Recibió: {{ $pago->recibido_por }}</div>
-                                    @endif
-                                    @if ($pago->fecha_publicacion)
-                                    <div class="text-xs text-gray-500">Publicación: {{ $pago->fecha_publicacion->format('d/m/Y') }}</div>
                                     @endif
                                 </td>
                                 <td class="px-4 py-2 text-xs">
@@ -223,8 +241,10 @@
                     </table>
                     @endif
                 </div>
+                @endif
             </div>
 
+            @can('delete', $factura)
             @if ($factura->pagos->isEmpty())
             <form method="post" action="{{ route('facturas.destroy', $factura) }}" onsubmit="return confirm('¿Eliminar esta factura?');" class="text-end">
                 @csrf
@@ -234,6 +254,7 @@
             @else
             <p class="text-end text-sm text-gray-500 dark:text-gray-400">No se puede eliminar: hay pagos registrados.</p>
             @endif
+            @endcan
         </div>
     </div>
 </x-app-layout>

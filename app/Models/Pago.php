@@ -30,7 +30,6 @@ class Pago extends Model
     protected $fillable = [
         'factura_id',
         'fecha_recibo',
-        'fecha_publicacion',
         'monto_aplicado_usd',
         'tipo_tasa',
         'valor_tasa',
@@ -39,7 +38,6 @@ class Pago extends Model
         'estado_validacion_banco',
         'referencia',
         'banco_destino',
-        'cuenta_destino',
         'recibido_por',
         'comprobante_path',
         'notas',
@@ -50,7 +48,6 @@ class Pago extends Model
     {
         return [
             'fecha_recibo' => 'date',
-            'fecha_publicacion' => 'date',
             'monto_aplicado_usd' => 'decimal:2',
             'valor_tasa' => 'decimal:4',
             'monto_bs' => 'decimal:2',
@@ -113,7 +110,7 @@ class Pago extends Model
         ]));
     }
 
-    /** Zelle, Panamá, transferencia bancaria (cuenta + referencia + comprobante). */
+    /** Zelle, Panamá y transferencia bancaria comparten referencia / comprobante. */
     public static function metodosGrupoTransferencia(): array
     {
         return [

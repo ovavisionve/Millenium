@@ -6,7 +6,7 @@
     <div class="py-6">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <p class="text-sm text-gray-600 dark:text-gray-300">
-                Un solo lugar para cargar clientes, categorías, productos y vendedores. Así el menú principal queda simple y podés sumar módulos nuevos sin perder claridad.
+                Un solo lugar para cargar clientes, categorías (líneas de venta), bancos y vendedores. Así el menú principal queda simple y podés sumar módulos nuevos sin perder claridad.
             </p>
 
             <div class="grid gap-4 sm:grid-cols-2">
@@ -16,11 +16,11 @@
                 </a>
                 <a href="{{ route('categorias.index') }}" class="block rounded-lg border border-millennium-dark/15 dark:border-millennium-sand/25 bg-white dark:bg-gray-800 p-5 shadow-sm hover:bg-millennium-sand/10 dark:hover:bg-gray-700/50 transition">
                     <h3 class="font-semibold text-millennium-dark dark:text-millennium-sand">Categorías</h3>
-                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Clasificación de productos (p. ej. líneas de carne).</p>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Líneas de venta (p. ej. vaca, búfalo): código, nombre y cómo se factura (ud. o kg).</p>
                 </a>
-                <a href="{{ route('productos.index') }}" class="block rounded-lg border border-millennium-dark/15 dark:border-millennium-sand/25 bg-white dark:bg-gray-800 p-5 shadow-sm hover:bg-millennium-sand/10 dark:hover:bg-gray-700/50 transition">
-                    <h3 class="font-semibold text-millennium-dark dark:text-millennium-sand">Productos</h3>
-                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Precios y códigos generados por el sistema.</p>
+                <a href="{{ route('bancos.index') }}" class="block rounded-lg border border-millennium-dark/15 dark:border-millennium-sand/25 bg-white dark:bg-gray-800 p-5 shadow-sm hover:bg-millennium-sand/10 dark:hover:bg-gray-700/50 transition">
+                    <h3 class="font-semibold text-millennium-dark dark:text-millennium-sand">Bancos</h3>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Catálogo para que Cobranza muestre bancos predeterminados como Banesco Karina o Banesco Nelson.</p>
                 </a>
                 <a href="{{ route('vendedores.index') }}" class="block rounded-lg border border-millennium-dark/15 dark:border-millennium-sand/25 bg-white dark:bg-gray-800 p-5 shadow-sm hover:bg-millennium-sand/10 dark:hover:bg-gray-700/50 transition">
                     <h3 class="font-semibold text-millennium-dark dark:text-millennium-sand">Vendedores</h3>

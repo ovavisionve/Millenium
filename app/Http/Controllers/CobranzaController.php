@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePagoRequest;
 use App\Http\Requests\StorePagosClienteRequest;
+use App\Models\Banco;
 use App\Models\Cliente;
 use App\Models\Factura;
 use App\Models\Pago;
@@ -81,6 +82,7 @@ class CobranzaController extends Controller
             'facturasComprobante' => $facturasComprobante,
             'facturasDestacarIds' => $destacarIds,
             'etiquetasCartera' => Factura::etiquetasCartera(),
+            'bancos' => Banco::query()->where('activo', true)->orderBy('nombre')->get(['id', 'nombre']),
             'metodosDivisas' => Pago::metodosDivisas(),
             'metodosBolivares' => Pago::metodosBolivares(),
         ]);
@@ -146,6 +148,7 @@ class CobranzaController extends Controller
 
         return view('cobranza.pago-create', [
             'factura' => $factura,
+            'bancos' => Banco::query()->where('activo', true)->orderBy('nombre')->get(['id', 'nombre']),
             'tiposTasa' => Pago::tiposTasa(),
             'metodosDivisas' => Pago::metodosDivisas(),
             'metodosBolivares' => Pago::metodosBolivares(),
@@ -172,6 +175,14 @@ class CobranzaController extends Controller
             $this->crearPagoYRebajar($request, $factura, $validated, $monto, $comprobantePath);
         });
 
+        $factura->refresh();
+
+        if ((float) $factura->saldo_pendiente <= 0) {
+            return redirect()
+                ->route('facturas.movimientos-pago.pdf', $factura)
+                ->with('status', 'Factura pagada completamente. Se generó el comprobante de movimientos para imprimir.');
+        }
+
         return redirect()
             ->route('facturas.show', $factura)
             ->with('status', 'Pago registrado correctamente.');
@@ -189,6 +200,7 @@ class CobranzaController extends Controller
         }
 
         $count = 0;
+        $facturaUnicaPagada = null;
         DB::transaction(function () use ($request, $validated, $cliente, $abonos, $comprobantePath, &$count): void {
             foreach ($abonos as $facturaId => $raw) {
                 $monto = round((float) ($raw ?? 0), 2);
@@ -206,9 +218,26 @@ class CobranzaController extends Controller
             }
         });
 
+        $facturasPagadas = Factura::query()
+            ->where('cliente_id', $cliente->id)
+            ->whereIn('id', array_keys(array_filter($abonos, fn ($raw) => round((float) ($raw ?? 0), 2) > 0)))
+            ->where('saldo_pendiente', '<=', 0)
+            ->orderBy('id')
+            ->get();
+
+        if ($count === 1 && $facturasPagadas->count() === 1) {
+            $facturaUnicaPagada = $facturasPagadas->first();
+        }
+
         $msg = $count === 1
             ? 'Abono registrado correctamente.'
             : $count.' abonos registrados correctamente.';
+
+        if ($facturaUnicaPagada) {
+            return redirect()
+                ->route('facturas.movimientos-pago.pdf', $facturaUnicaPagada)
+                ->with('status', 'Factura pagada completamente. Se generó el comprobante de movimientos para imprimir.');
+        }
 
         return redirect()
             ->route('cobranza.cliente', $cliente)
@@ -231,7 +260,6 @@ class CobranzaController extends Controller
         Pago::create([
             'factura_id' => $factura->id,
             'fecha_recibo' => $validated['fecha_recibo'],
-            'fecha_publicacion' => $validated['fecha_publicacion'] ?? null,
             'monto_aplicado_usd' => $monto,
             'tipo_tasa' => $validated['tipo_tasa'],
             'valor_tasa' => $validated['valor_tasa'],
@@ -240,7 +268,6 @@ class CobranzaController extends Controller
             'estado_validacion_banco' => $estadoBanco,
             'referencia' => $validated['referencia'] ?? null,
             'banco_destino' => $validated['banco_destino'] ?? null,
-            'cuenta_destino' => $validated['cuenta_destino'] ?? null,
             'recibido_por' => $validated['recibido_por'] ?? null,
             'comprobante_path' => $comprobantePath,
             'notas' => $validated['notas'] ?? null,

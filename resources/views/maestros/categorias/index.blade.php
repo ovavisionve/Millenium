@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200">Categorías de producto</h2>
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200">Categorías (líneas de venta)</h2>
             <a href="{{ route('categorias.create') }}"><x-primary-button type="button">Nueva categoría</x-primary-button></a>
         </div>
     </x-slot>
@@ -33,6 +33,8 @@
                             <tr>
                                 <th class="px-4 py-3 font-medium">Código</th>
                                 <th class="px-4 py-3 font-medium">Nombre</th>
+                                <th class="px-4 py-3 font-medium">Unidad</th>
+                                <th class="px-4 py-3 font-medium">Activo</th>
                                 <th class="px-4 py-3 font-medium">Descripción</th>
                                 <th class="px-4 py-3 font-medium text-end">Acciones</th>
                             </tr>
@@ -42,6 +44,8 @@
                             <tr class="text-gray-900 dark:text-gray-100">
                                 <td class="px-4 py-3 font-mono text-xs">{{ $c->codigo }}</td>
                                 <td class="px-4 py-3">{{ $c->nombre }}</td>
+                                <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ \App\Models\Categoria::unidadAbreviada()[$c->unidad] ?? $c->unidad }}</td>
+                                <td class="px-4 py-3">{{ $c->activo ? 'Sí' : 'No' }}</td>
                                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400 max-w-md truncate">{{ $c->descripcion }}</td>
                                 <td class="px-4 py-3 text-end space-x-2 whitespace-nowrap">
                                     <a href="{{ route('categorias.edit', $c) }}" class="text-millennium-dark dark:text-millennium-sand hover:underline">Editar</a>
@@ -53,7 +57,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="4" class="px-4 py-8 text-center text-gray-500">No hay categorías.</td>
+                                <td colspan="6" class="px-4 py-8 text-center text-gray-500">No hay categorías.</td>
                             </tr>
                             @endforelse
                         </tbody>

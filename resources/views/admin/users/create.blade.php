@@ -38,7 +38,7 @@
                         <x-input-label for="role" value="Rol" />
                         <select id="role" name="role" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-millennium-dark focus:ring-millennium-sand">
                             @foreach ($roles as $r)
-                            <option value="{{ $r }}" @selected(old('role', 'vendedor' )===$r)>{{ $roleLabels[$r] }}</option>
+                            <option value="{{ $r }}" @selected(old('role', 'vendedor_normal' )===$r)>{{ $roleLabels[$r] }}</option>
                             @endforeach
                         </select>
                         <x-input-error class="mt-2" :messages="$errors->get('role')" />

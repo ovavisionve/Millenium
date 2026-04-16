@@ -122,6 +122,7 @@ class LoginBlackBoxTest extends TestCase
     {
         $user = User::factory()->create([
             'email' => 'ok@example.com',
+            'role' => User::ROLE_ADMIN,
         ]);
 
         $response = $this->post('/login', [

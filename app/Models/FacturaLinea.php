@@ -9,7 +9,8 @@ class FacturaLinea extends Model
 {
     protected $fillable = [
         'factura_id',
-        'producto_id',
+        'categoria_id',
+        'cantidad_animales',
         'cantidad',
         'precio_unitario',
         'subtotal',
@@ -18,6 +19,7 @@ class FacturaLinea extends Model
     protected function casts(): array
     {
         return [
+            'cantidad_animales' => 'integer',
             'cantidad' => 'decimal:3',
             'precio_unitario' => 'decimal:4',
             'subtotal' => 'decimal:2',
@@ -33,10 +35,10 @@ class FacturaLinea extends Model
     }
 
     /**
-     * @return BelongsTo<Producto, $this>
+     * @return BelongsTo<Categoria, $this>
      */
-    public function producto(): BelongsTo
+    public function categoria(): BelongsTo
     {
-        return $this->belongsTo(Producto::class);
+        return $this->belongsTo(Categoria::class);
     }
 }

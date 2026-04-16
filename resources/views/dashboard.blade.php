@@ -5,7 +5,7 @@
     el título "Inicio"/Dashboard para no duplicar un PNG grande que tape métricas.
 
     Alineación con el hilo operativo (Vic / Pasos 1–6): maestros en Clientes, Categorías,
-    Productos → Facturas (PASO 2) → Cobranza (PASO 3) → Reportes (PASO 5); Canceladas
+    Categorías → Facturas (PASO 2) → Cobranza (PASO 3) → Reportes (PASO 5); Canceladas
     cubre el cierre PASO 4; este listado resume PASO 6 (gráficas y totales).
 
     Verificación de precios (propuesta Vic): implementada — `facturas.verificar`, columnas
@@ -35,11 +35,11 @@
                     <section>
                         <h3 class="font-semibold text-millennium-dark dark:text-millennium-sand">PASO 1: Registro de base de datos (maestros)</h3>
                         <p class="mt-1"><strong>Módulo de clientes:</strong> registro con RIF/cédula, nombre, teléfono y la <strong>zona</strong> (sector o ruta) y <strong>vendedor</strong>. Es la base para reportes posteriores (por vendedor, por zona, cartera en la calle).</p>
-                        <p class="mt-2"><strong>Módulo de productos y categorías:</strong> primero se definen las <strong>categorías</strong> con un <strong>código corto</strong> (único) y un <strong>nombre</strong> claro — por ejemplo: <em>Vaca</em>, <em>Búfalo</em>, <em>Trastes</em> — de modo que en reportes puedas filtrar “todo lo que es Vaca” vs “Búfalo”, etc. Luego cada <strong>producto</strong> se crea dentro de una categoría (descripción, unidad si aplica, precio de referencia) para que en facturación y en el Paso 5 puedas cruzar <strong>vendedor + zona + tipo de producto/categoría</strong> sin mezclar conceptos.</p>
+                        <p class="mt-2"><strong>Módulo de categorías:</strong> cada categoría es una <strong>línea de venta</strong> (p. ej. <em>Vaca</em>, <em>Búfalo</em>) con <strong>código corto</strong> (único), nombre y si se factura por <strong>pieza/unidad</strong> o por <strong>kg</strong>. En facturación elegís la categoría en cada línea; en el Paso 5 podés cruzar <strong>vendedor + zona + categoría</strong> sin mezclar conceptos.</p>
                     </section>
                     <section>
                         <h3 class="font-semibold text-millennium-dark dark:text-millennium-sand">PASO 2: Carga manual de factura (control real)</h3>
-                        <p class="mt-1"><strong>Carga de datos:</strong> fecha, cliente, líneas con <strong>kilos/cantidad</strong>, <strong>precio real</strong> por producto y <strong>días de crédito</strong>.</p>
+                        <p class="mt-1"><strong>Carga de datos:</strong> fecha, cliente, líneas con <strong>categoría</strong>, <strong>unidad/Kilos</strong>, <strong>precio real</strong> y <strong>días de crédito</strong>.</p>
                         <p class="mt-2"><strong>Cuentas por cobrar:</strong> al guardar, la factura alimenta la deuda “en la calle”. El sistema debe reflejar <strong>vencida / por vencer / al día</strong> según crédito y fechas.</p>
                     </section>
                     <section>
@@ -56,7 +56,7 @@
                     </section>
                     <section>
                         <h3 class="font-semibold text-millennium-dark dark:text-millennium-sand">PASO 5: Reportes con filtros cruzados</h3>
-                        <p class="mt-1">Por <strong>vendedor</strong>, por <strong>zona</strong>, por fechas, por producto/categoría; combinaciones (ej. vendedor A + zona X + producto tipo “Vaca” en el mes). <strong>Estado de cuenta</strong> por cliente: vencidas / no vencidas.</p>
+                        <p class="mt-1">Por <strong>vendedor</strong>, por <strong>zona</strong>, por fechas, por <strong>categoría</strong>; combinaciones (ej. vendedor A + zona X + línea “Vaca” en el mes). <strong>Estado de cuenta</strong> por cliente: vencidas / no vencidas.</p>
                     </section>
                     <section>
                         <h3 class="font-semibold text-millennium-dark dark:text-millennium-sand">PASO 6: Dashboard y gráficas</h3>

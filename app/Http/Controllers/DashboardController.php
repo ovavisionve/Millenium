@@ -6,11 +6,17 @@ use App\Models\Factura;
 use App\Models\Pago;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function __invoke(): View
+    public function __invoke(Request $request): View|RedirectResponse
     {
+        if ($request->user()?->esVendedorRestringido()) {
+            return redirect()->route('facturas.index');
+        }
+
         $inicio = Carbon::now()->subMonths(5)->startOfMonth();
 
         $ventasPorMes = Factura::query()

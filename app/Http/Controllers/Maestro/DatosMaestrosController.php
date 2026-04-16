@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\View\View;
 
 /**
- * Punto de entrada único para maestros (clientes, categorías, productos, vendedores).
+ * Punto de entrada único para maestros (clientes, categorías, vendedores).
  */
 class DatosMaestrosController extends Controller
 {

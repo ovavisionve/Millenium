@@ -57,9 +57,9 @@ class CategoriaController extends Controller
 
     public function destroy(Categoria $categoria): RedirectResponse
     {
-        if ($categoria->productos()->exists()) {
+        if ($categoria->facturaLineas()->exists()) {
             return redirect()->route('categorias.index')
-                ->withErrors(['error' => 'No se puede eliminar: hay productos usando esta categoría.']);
+                ->withErrors(['error' => 'No se puede eliminar: hay líneas de factura que usan esta categoría.']);
         }
 
         $categoria->delete();
