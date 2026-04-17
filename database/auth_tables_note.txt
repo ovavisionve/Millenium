@@ -2,7 +2,7 @@ Millennium — tablas relacionadas con autenticación y sesión (Laravel típico
 
 users
   Login (email + password hasheado), role, is_active, remember_token, email_verified_at.
-  Las tablas de negocio (clientes, facturas, factura_lineas, pagos, productos, categorías)
+  Las tablas de negocio (clientes, facturas, factura_lineas, pagos, categorías, bancos)
   no guardan contraseñas; referencian usuarios solo si el modelo/migración lo define.
 
 password_reset_tokens

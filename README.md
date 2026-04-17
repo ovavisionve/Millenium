@@ -23,7 +23,7 @@ Sistema web para la gestión comercial de **Millennium** (marca **Incapor**): ma
 
 ## Enfoque (qué estamos construyendo)
 
-Aplicación **Laravel** orientada a **cuentas por cobrar en la calle**: registro de clientes y productos, facturas manuales con crédito, abonos con tasa y método de pago, historial y reportes filtrados (vendedor, zona, categoría, fechas). La interfaz sigue la guía operativa por pasos (maestros → facturación → cobranza → canceladas → reportes → dashboard).
+Aplicación **Laravel** orientada a **cuentas por cobrar en la calle**: registro de clientes, categorías de línea (matadero/embutidos), facturas manuales con crédito, abonos con tasa y método de pago, historial y reportes filtrados (vendedor, zona, categoría, fechas). La interfaz sigue la guía operativa por pasos (maestros → facturación → cobranza → canceladas → reportes → dashboard).
 
 ---
 
@@ -33,7 +33,7 @@ Aplicación **Laravel** orientada a **cuentas por cobrar en la calle**: registro
 |------------|-----------------|
 | PHP | ^8.2 |
 | Laravel | ^12 |
-| Node (frontend) | Vite + Tailwind CSS 4 + Alpine.js |
+| Node (frontend) | Vite + Tailwind CSS 3 (PostCSS) + Alpine.js |
 | Base de datos | MySQL / MariaDB (configurable en `.env`) |
 | Pruebas automatizadas | PHPUnit (`php artisan test`) |
 
@@ -45,7 +45,7 @@ Aplicación **Laravel** orientada a **cuentas por cobrar en la calle**: registro
 
 - [x] Autenticación, roles y usuarios activos/inactivos  
 - [x] UI marca Incapor (login, navegación, componentes)  
-- [x] Módulos: clientes, categorías, productos, facturas, cobranza, canceladas, reportes  
+- [x] Módulos: clientes, categorías, facturas (líneas por categoría), cobranza, canceladas, reportes  
 - [x] Dashboard con métricas y gráficas (Chart.js)  
 - [x] Pruebas de caja negra en login (`LoginBlackBoxTest`) — **ejecutadas en local**
 

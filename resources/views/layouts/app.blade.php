@@ -42,6 +42,9 @@
             {{ $slot }}
         </main>
     </div>
+
+    @include('components.millennium-assistant')
+
     @stack('scripts')
 </body>
 

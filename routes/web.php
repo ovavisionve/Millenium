@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\ChatAssistantController;
 use App\Http\Controllers\CobranzaController;
 use App\Http\Controllers\CuentasPorCobrarController;
 use App\Http\Controllers\DashboardController;
@@ -14,19 +15,15 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReporteController;
 use Illuminate\Support\Facades\Route;
 
-// Esta ruta define la página de inicio ('/'). Cuando un usuario visita el dominio principal (ej: http://localhost/),
-// Laravel ejecuta esta función anónima (closure), que simplemente retorna la vista 'welcome'.
-// Es la portada/pantalla de bienvenida por defecto de la aplicación Laravel.
-
-/* Route::get('/', function () { */
-/*     return view('welcome'); */
-/* }); */
-
 Route::get('/', function () {
     return redirect()->route('login');
 });
 
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::middleware(['auth', 'verified', 'throttle:30,1'])->group(function () {
+    Route::post('assistant/chat', ChatAssistantController::class)->name('assistant.chat');
+});
 
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::resource('usuarios', UserController::class)->except(['show']);

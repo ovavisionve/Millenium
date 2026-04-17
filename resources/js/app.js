@@ -98,6 +98,79 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
+    Alpine.data('millenniumAssistant', (opts = {}) => ({
+        open: false,
+        loading: false,
+        input: '',
+        messages: [],
+        sendUrl: opts.sendUrl ?? '',
+        pageRoute: opts.pageRoute ?? '',
+        toggle() {
+            this.open = !this.open;
+        },
+        async send() {
+            const text = String(this.input ?? '').trim();
+            if (!text || this.loading || !this.sendUrl) {
+                return;
+            }
+            this.messages.push({ role: 'user', text });
+            this.input = '';
+            this.loading = true;
+            this.$nextTick(() => {
+                const box = this.$refs.msgBox;
+                if (box) {
+                    box.scrollTop = box.scrollHeight;
+                }
+            });
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+            try {
+                const res = await fetch(this.sendUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': token,
+                    },
+                    body: JSON.stringify({
+                        message: text,
+                        page_route: this.pageRoute || null,
+                    }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    this.messages.push({
+                        role: 'assistant',
+                        text: typeof data.error === 'string' ? data.error : 'No se pudo completar la solicitud.',
+                        isError: true,
+                    });
+                } else if (data.reply) {
+                    this.messages.push({ role: 'assistant', text: data.reply });
+                } else {
+                    this.messages.push({
+                        role: 'assistant',
+                        text: 'Respuesta inesperada del servidor.',
+                        isError: true,
+                    });
+                }
+            } catch {
+                this.messages.push({
+                    role: 'assistant',
+                    text: 'Error de red. Revisá la conexión.',
+                    isError: true,
+                });
+            } finally {
+                this.loading = false;
+                this.$nextTick(() => {
+                    const box = this.$refs.msgBox;
+                    if (box) {
+                        box.scrollTop = box.scrollHeight;
+                    }
+                });
+            }
+        },
+    }));
+
     Alpine.data('cobranzaPagoPorMetodo', (opts = {}) => ({
         metodo: opts.metodoInicial ?? 'zelle',
         pagoMovil: opts.pagoMovil ?? 'pago_movil',
