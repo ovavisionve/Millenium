@@ -100,9 +100,50 @@ class ReporteController extends Controller
                     ->orderByDesc('fecha_emision')
                     ->orderByDesc('id');
 
-                if ($request->boolean('solo_vencidas')) {
-                    $hoy = Carbon::today();
+                // Estado de cuenta (por cliente): filtros orientados a deuda real / cartera / pago / verificación.
+                $hoy = Carbon::today();
+
+                // Por defecto: modo cliente = solo facturas por pagar con saldo (deuda real).
+                // Si el usuario desmarca el switch, se muestra el histórico (incluye pagadas y saldo 0).
+                $modoCliente = $request->boolean('cuenta_modo_cliente', true);
+                if ($modoCliente) {
+                    $fq->where('estado_pago', Factura::ESTADO_PAGO_ABIERTA)
+                        ->where('saldo_pendiente', '>', 0);
+                }
+
+                // Cartera (vencimiento)
+                $cartera = $request->string('cuenta_cartera')->toString(); // '', 'vencidas', 'no_vencidas', 'por_vencer', 'al_dia'
+                if ($request->boolean('solo_vencidas') || $cartera === 'vencidas') {
                     $fq->whereDate('fecha_vencimiento', '<', $hoy);
+                } elseif ($cartera === 'no_vencidas') {
+                    $fq->whereDate('fecha_vencimiento', '>=', $hoy);
+                } elseif ($cartera === Factura::CARTERA_POR_VENCER) {
+                    $limite = $hoy->copy()->addDays(Factura::DIAS_UMBRAL_POR_VENCER);
+                    $fq->whereDate('fecha_vencimiento', '>=', $hoy)
+                        ->whereDate('fecha_vencimiento', '<=', $limite);
+                } elseif ($cartera === Factura::CARTERA_AL_DIA) {
+                    $limite = $hoy->copy()->addDays(Factura::DIAS_UMBRAL_POR_VENCER);
+                    $fq->whereDate('fecha_vencimiento', '>', $limite);
+                }
+
+                // Estado pago (si no está en modo cliente)
+                if (! $modoCliente) {
+                    $ep = $request->string('cuenta_estado_pago')->toString(); // '', 'abierta', 'pagada'
+                    if ($ep === Factura::ESTADO_PAGO_ABIERTA || $ep === Factura::ESTADO_PAGO_PAGADA) {
+                        $fq->where('estado_pago', $ep);
+                    }
+
+                    if ($request->boolean('cuenta_solo_con_saldo')) {
+                        $fq->where('saldo_pendiente', '>', 0);
+                    }
+                }
+
+                // Verificación
+                $verif = $request->string('cuenta_verificacion')->toString(); // '', 'pendiente', 'verificada'
+                if ($verif === 'pendiente') {
+                    $fq->whereNull('verificado_por');
+                } elseif ($verif === 'verificada') {
+                    $fq->whereNotNull('verificado_por');
                 }
 
                 $estadoCuentaFacturas = $fq->get();

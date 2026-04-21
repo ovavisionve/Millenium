@@ -8,6 +8,7 @@ use App\Models\Banco;
 use App\Models\Cliente;
 use App\Models\Factura;
 use App\Models\Pago;
+use App\Models\SaldoAFavor;
 use App\Support\MovimientosPagoInforme;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
@@ -85,6 +86,7 @@ class CobranzaController extends Controller
             'bancos' => Banco::query()->where('activo', true)->orderBy('nombre')->get(['id', 'nombre']),
             'metodosDivisas' => Pago::metodosDivisas(),
             'metodosBolivares' => Pago::metodosBolivares(),
+            'saldoAFavorUsd' => $cliente->saldoAFavorDisponibleUsd(),
         ]);
     }
 
@@ -257,7 +259,7 @@ class CobranzaController extends Controller
             ? Pago::VALIDACION_BANCO_PENDIENTE
             : null;
 
-        Pago::create([
+        $pago = Pago::create([
             'factura_id' => $factura->id,
             'fecha_recibo' => $validated['fecha_recibo'],
             'monto_aplicado_usd' => $monto,
@@ -273,6 +275,26 @@ class CobranzaController extends Controller
             'notas' => $validated['notas'] ?? null,
             'registrado_por' => $request->user()->id,
         ]);
+
+        // Si en pagos en Bs hay excedente (Bs/tasa > USD aplicado), guardar como saldo a favor (USD).
+        if (in_array(($validated['metodo_pago'] ?? null), [Pago::METODO_PAGO_MOVIL, Pago::METODO_TRANSFERENCIA], true) && $montoBs !== null) {
+            $tasa = (float) ($validated['valor_tasa'] ?? 0);
+            if ($tasa > 0) {
+                $equivUsd = round(((float) $montoBs) / $tasa, 2);
+                $excedente = round(max(0, $equivUsd - round($monto, 2)), 2);
+                if ($excedente >= 0.01) {
+                    SaldoAFavor::create([
+                        'cliente_id' => $factura->cliente_id,
+                        'origen_pago_id' => $pago->id,
+                        'fecha_recibo' => $validated['fecha_recibo'],
+                        'monto_usd' => $excedente,
+                        'saldo_usd' => $excedente,
+                        'notas' => 'Excedente por pago en bolívares al cerrar factura.',
+                        'registrado_por' => $request->user()->id,
+                    ]);
+                }
+            }
+        }
 
         $factura->refresh();
         $factura->aplicarAbonoUsd($monto);

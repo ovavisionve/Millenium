@@ -88,6 +88,24 @@ class Cliente extends Model
         return $this->hasMany(Factura::class);
     }
 
+    /**
+     * @return HasMany<SaldoAFavor, $this>
+     */
+    public function saldosAFavor(): HasMany
+    {
+        return $this->hasMany(SaldoAFavor::class);
+    }
+
+    /** Saldo a favor disponible en USD (sumatoria). */
+    public function saldoAFavorDisponibleUsd(): float
+    {
+        $v = (float) $this->saldosAFavor()
+            ->where('saldo_usd', '>', 0)
+            ->sum('saldo_usd');
+
+        return round($v, 2);
+    }
+
     public function getFullIdentificacionAttribute(): string
     {
         return strtoupper((string) $this->tipo_documento).'-'.trim((string) $this->documento_numero);

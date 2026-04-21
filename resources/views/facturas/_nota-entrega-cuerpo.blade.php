@@ -73,8 +73,13 @@
                     <div class="ne-muted">{{ $linea->categoria->codigo }}</div>
                 </td>
                 <td class="ne-num">{{ $linea->cantidad_animales !== null ? number_format($linea->cantidad_animales, 0, ',', '.') : '—' }}</td>
-                <td class="ne-num">{{ number_format($linea->cantidad, 3) }} {{ \App\Models\Categoria::unidadAbreviada()[$linea->categoria->unidad] ?? $linea->categoria->unidad }}</td>
-                <td class="ne-num">${{ number_format($linea->precio_unitario, 4) }}</td>
+                @php
+                    $unidad = $linea->categoria->unidad;
+                    $decCantidad = $unidad === \App\Models\Categoria::UNIDAD_UNIDAD ? 0 : 2;
+                    $udAb = \App\Models\Categoria::unidadAbreviada()[$unidad] ?? $unidad;
+                @endphp
+                <td class="ne-num">{{ number_format((float) $linea->cantidad, $decCantidad) }} {{ $udAb }}</td>
+                <td class="ne-num">${{ number_format((float) $linea->precio_unitario, 2) }}</td>
                 <td class="ne-num">${{ number_format($linea->subtotal, 2) }}</td>
             </tr>
             @endforeach

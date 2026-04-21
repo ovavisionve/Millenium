@@ -380,7 +380,7 @@ class FacturaController extends Controller
 
     /**
      * @param  Collection<int, Cliente>  $clientes
-     * @return array<string, array{nombre: string, rif: string, email: string|null, direccion: string|null, vendedor: string|null, vendedor_id: string, zona: string|null, ubicacion: string|null}>
+     * @return array<string, array{nombre: string, rif: string, email: string|null, telefono: string|null, direccion: string|null, vendedor: string|null, vendedor_id: string, zona: string|null, ubicacion: string|null}>
      */
     private function clientesResumenParaFactura(Collection $clientes): array
     {
@@ -397,6 +397,7 @@ class FacturaController extends Controller
                     'nombre' => $c->nombre_razon_social,
                     'rif' => $c->full_identificacion,
                     'email' => $c->email ? trim((string) $c->email) : null,
+                    'telefono' => $c->telefono ? trim((string) $c->telefono) : null,
                     'direccion' => $c->direccion ? trim((string) $c->direccion) : null,
                     'vendedor' => $c->vendedor?->name,
                     'vendedor_id' => $c->vendedor_id !== null ? (string) $c->vendedor_id : '',

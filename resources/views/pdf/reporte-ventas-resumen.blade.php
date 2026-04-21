@@ -61,7 +61,7 @@
             </td>
             <td>
                 <div class="lab">Kg (líneas en categoría kg)</div>
-                <div class="val">{{ number_format($totales['kg'], 3) }} kg</div>
+                <div class="val">{{ number_format($totales['kg'], 2) }} kg</div>
             </td>
             <td>
                 <div class="lab">Formato</div>
@@ -175,6 +175,7 @@
                     $f = $linea->factura;
                     $c = $linea->categoria;
                     $ud = $uAb[$c->unidad] ?? $c->unidad;
+                    $decCantidad = $c->unidad === \App\Models\Categoria::UNIDAD_UNIDAD ? 0 : 2;
                 @endphp
                 <tr>
                     <td>{{ $f->numero_factura ?? '#'.$f->id }}</td>
@@ -185,8 +186,8 @@
                     <td>{{ $f->vendedor?->name ?? '—' }}</td>
                     <td>{{ $c->nombre }} <span class="muted">({{ $c->codigo }})</span></td>
                     <td class="num">{{ $linea->cantidad_animales !== null ? number_format($linea->cantidad_animales, 0, ',', '.') : '—' }}</td>
-                    <td class="num">{{ number_format((float) $linea->cantidad, 3) }} {{ $ud }}</td>
-                    <td class="num">${{ rtrim(rtrim(number_format((float) $linea->precio_unitario, 4, '.', ''), '0'), '.') }}</td>
+                    <td class="num">{{ number_format((float) $linea->cantidad, $decCantidad) }} {{ $ud }}</td>
+                    <td class="num">${{ number_format((float) $linea->precio_unitario, 2) }}</td>
                     <td class="num">${{ number_format((float) $linea->subtotal, 2) }}</td>
                     <td>{{ $f->estaVerificada() ? 'Sí' : 'Pend.' }}</td>
                 </tr>

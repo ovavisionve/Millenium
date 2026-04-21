@@ -9,56 +9,69 @@
     <div class="py-6">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <p class="text-sm text-gray-600 dark:text-gray-300">
-                Elegí un cliente en la lista o buscalo por texto. En la siguiente pantalla verás sus facturas con saldo: marcá en cuáles abonás e indicá el monto en USD por cada una (un mismo recibo puede repartirse en varias filas).
+                Buscá el cliente por nombre, zona o documento. Al tocarlo, vas directo a sus facturas con saldo para registrar abonos.
             </p>
 
-            <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-4 border border-gray-200 dark:border-gray-600 space-y-3">
-                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Filtrar por cliente</p>
-                <form method="get" action="{{ route('cobranza.index') }}" class="flex flex-col sm:flex-row gap-3 sm:items-end">
-                    <div class="flex-1 min-w-0">
-                        <x-input-label for="cliente_id" value="Cliente" />
-                        <select id="cliente_id" name="cliente_id" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-millennium-sand focus:ring-millennium-sand">
-                            <option value="">— Elegir cliente —</option>
-                            @foreach ($clientesTodos as $c)
-                            <option value="{{ $c->id }}" @selected((string) old('cliente_id', request('cliente_id')) === (string) $c->id)>{{ $c->nombre_razon_social }}</option>
-                            @endforeach
-                        </select>
+            <div
+                class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-4 border border-gray-200 dark:border-gray-600 space-y-3"
+                x-data="cobranzaClientePicker({
+                    query: @js(old('q', $q)),
+                    baseUrl: @js(str_replace('/0', '', route('cobranza.cliente', ['cliente' => 0]))),
+                    clientesData: @js($clientesTodos->map(fn ($c) => [
+                        'id' => (int) $c->id,
+                        'nombre' => (string) $c->nombre_razon_social,
+                        'rif' => (string) $c->full_identificacion,
+                        'zona' => $c->zona ? (string) $c->zona : null,
+                    ])->values()->all()),
+                })"
+                @click.outside="cerrar()"
+            >
+                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Buscar cliente</p>
+                <div class="flex flex-col gap-3">
+                    <div>
+                        <x-input-label for="q" value="Cliente" />
+                        <x-text-input
+                            id="q"
+                            name="q"
+                            type="text"
+                            class="mt-1 block w-full"
+                            x-model="query"
+                            @focus="open = true"
+                            @input="onInput($event)"
+                            @keydown.down.prevent="mover(1)"
+                            @keydown.up.prevent="mover(-1)"
+                            @keydown.enter.prevent="confirmarActivo()"
+                            @keydown.escape.prevent="cerrar()"
+                            placeholder="Nombre, zona o documento"
+                            autocomplete="off"
+                        />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Tip: escribí 2–3 letras y seleccioná en la lista.</p>
                     </div>
-                    <x-primary-button type="submit" class="h-10 shrink-0">Ver facturas y abonar</x-primary-button>
-                </form>
-            </div>
 
-            <p class="text-xs text-gray-500 dark:text-gray-400">O buscá por nombre, zona o documento:</p>
-
-            <form method="get" action="{{ route('cobranza.index') }}" class="flex flex-col sm:flex-row gap-3 sm:items-end">
-                <div class="flex-1">
-                    <x-input-label for="q" value="Buscar cliente" />
-                    <x-text-input id="q" name="q" type="text" class="mt-1 block w-full" value="{{ old('q', $q) }}" placeholder="Nombre, zona o documento" />
-                </div>
-                <x-secondary-button type="submit" class="h-10">Buscar</x-secondary-button>
-            </form>
-
-            @if ($q !== '')
-                <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg overflow-hidden">
-                    @if ($clientes->isEmpty())
-                        <p class="p-6 text-sm text-gray-500">No se encontraron clientes.</p>
-                    @else
-                        <ul class="divide-y divide-gray-200 dark:divide-gray-600">
-                            @foreach ($clientes as $c)
+                    <div x-show="open" x-cloak class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <template x-if="filtrados.length === 0">
+                            <p class="p-4 text-sm text-gray-500">No se encontraron clientes.</p>
+                        </template>
+                        <ul x-ref="list" class="divide-y divide-gray-200 dark:divide-gray-700 max-h-72 overflow-auto">
+                            <template x-for="(c, idx) in filtrados" :key="c.id">
                                 <li>
-                                    <a href="{{ route('cobranza.cliente', $c) }}" class="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ $c->nombre_razon_social }}</span>
-                                        <span class="text-sm text-gray-500 dark:text-gray-400"> · {{ $c->full_identificacion }}</span>
-                                        @if ($c->zona)
-                                            <span class="text-xs text-gray-400"> · {{ $c->zona }}</span>
-                                        @endif
-                                    </a>
+                                    <button
+                                        type="button"
+                                        class="block w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                                        :class="idx === activoIdx ? 'bg-gray-50 dark:bg-gray-700/50' : ''"
+                                        :data-idx="idx"
+                                        @click="seleccionar(c)"
+                                    >
+                                        <span class="font-medium text-gray-900 dark:text-gray-100" x-text="c.nombre"></span>
+                                        <span class="text-sm text-gray-500 dark:text-gray-400" x-text="' · ' + c.rif"></span>
+                                        <span class="text-xs text-gray-400" x-show="c.zona" x-text="' · ' + c.zona"></span>
+                                    </button>
                                 </li>
-                            @endforeach
+                            </template>
                         </ul>
-                    @endif
+                    </div>
                 </div>
-            @endif
+            </div>
         </div>
     </div>
 </x-app-layout>

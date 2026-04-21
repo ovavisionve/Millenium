@@ -13,6 +13,7 @@ use App\Http\Controllers\Maestro\DatosMaestrosController;
 use App\Http\Controllers\Maestro\VendedorController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReporteController;
+use App\Http\Controllers\SaldoAFavorController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -64,6 +65,8 @@ Route::middleware(['auth', 'verified', 'operational'])->group(function () {
     Route::get('cobranza/cliente/{cliente}/movimientos-pago.pdf', [CobranzaController::class, 'movimientosPagoPdf'])->name('cobranza.cliente.movimientos-pago.pdf');
     Route::get('cobranza/cliente/{cliente}', [CobranzaController::class, 'cliente'])->name('cobranza.cliente');
     Route::post('cobranza/cliente/{cliente}/pagos', [CobranzaController::class, 'storeCliente'])->name('cobranza.cliente.pagos.store');
+    Route::get('cobranza/cliente/{cliente}/saldo-a-favor', [SaldoAFavorController::class, 'create'])->name('cobranza.saldo-favor.create');
+    Route::post('cobranza/cliente/{cliente}/saldo-a-favor', [SaldoAFavorController::class, 'store'])->name('cobranza.saldo-favor.store');
     Route::get('cobranza/facturas/{factura}/pagos/nuevo', [CobranzaController::class, 'create'])->name('cobranza.pagos.create');
     Route::post('cobranza/facturas/{factura}/pagos', [CobranzaController::class, 'store'])->name('cobranza.pagos.store');
 });

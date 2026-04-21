@@ -168,6 +168,10 @@
                                         <dt class="text-xs uppercase text-gray-500 dark:text-gray-400">Correo</dt>
                                         <dd x-text="clienteActual()?.email ?? '—'"></dd>
                                     </div>
+                                    <div>
+                                        <dt class="text-xs uppercase text-gray-500 dark:text-gray-400">Teléfono</dt>
+                                        <dd x-text="clienteActual()?.telefono ?? '—'"></dd>
+                                    </div>
                                     <div class="sm:col-span-2">
                                         <dt class="text-xs uppercase text-gray-500 dark:text-gray-400">Dirección</dt>
                                         <dd x-text="clienteActual()?.direccion ?? '—'"></dd>

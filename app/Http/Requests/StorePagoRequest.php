@@ -114,18 +114,20 @@ class StorePagoRequest extends FormRequest
             }
 
             $metodo = $this->string('metodo_pago')->toString();
-            if ($metodo === Pago::METODO_PAGO_MOVIL) {
+            if (in_array($metodo, [Pago::METODO_PAGO_MOVIL, Pago::METODO_TRANSFERENCIA], true)) {
                 $tasa = (float) $this->input('valor_tasa');
                 $bs = (float) $this->input('monto_bs');
                 if ($tasa > 0 && $bs > 0) {
                     $equiv = round($bs / $tasa, 2);
-                    if (abs($equiv - round($monto, 2)) > 0.02) {
+                    // Permitir sobrantes (p. ej. el cliente pagó de más en Bs),
+                    // pero evitar aplicar más USD de lo que el equivalente Bs/tasa cubre.
+                    if ($equiv + 0.02 < round($monto, 2)) {
                         $validator->errors()->add(
                             'monto_aplicado_usd',
                             sprintf(
-                                'El monto USD (%s) no coincide con Bs/tasa (%s USD). Usá el mismo criterio en los tres campos.',
+                                'El equivalente Bs/tasa (%s USD) es menor al monto USD a aplicar (%s). Ajustá monto USD, Bs o tasa.',
+                                number_format($equiv, 2),
                                 number_format($monto, 2),
-                                number_format($equiv, 2)
                             )
                         );
                     }

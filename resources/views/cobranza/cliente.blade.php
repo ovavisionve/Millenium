@@ -18,6 +18,23 @@
             <div class="rounded-md bg-green-50 dark:bg-green-900/20 p-4 text-sm text-green-800 dark:text-green-200">{{ session('status') }}</div>
             @endif
 
+            @if (($saldoAFavorUsd ?? 0) > 0)
+            <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg overflow-hidden text-sm">
+                <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-600 font-medium">Saldo a favor</div>
+                <div class="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700 dark:text-gray-200">
+                            Disponible: <span class="font-semibold">${{ number_format((float) $saldoAFavorUsd, 2) }}</span>
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Podés aplicarlo a futuras facturas cuando vos decidas.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <a href="{{ route('cobranza.saldo-favor.create', $cliente) }}"><x-primary-button type="button">Aplicar a facturas</x-primary-button></a>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             <div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg overflow-hidden text-sm">
                 <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-600 font-medium">Facturas con saldo</div>
                 @if ($facturas->isEmpty())
@@ -82,6 +99,7 @@
                         x-data="cobranzaPagoPorMetodo({
                             metodoInicial: @js(old('metodo_pago', \App\Models\Pago::METODO_ZELLE)),
                             pagoMovil: @js(\App\Models\Pago::METODO_PAGO_MOVIL),
+                            transferencia: @js(\App\Models\Pago::METODO_TRANSFERENCIA),
                             efectivo: @js(\App\Models\Pago::METODO_EFECTIVO),
                             usdt: @js(\App\Models\Pago::METODO_USDT),
                             oldValorTasa: @js(old('valor_tasa')),
@@ -108,9 +126,6 @@
                             <x-input-error :messages="$errors->get('metodo_pago')" class="mt-2" />
                         </div>
 
-                        <div x-show="grupo() === 'pago_movil'" x-cloak class="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-3 text-sm text-amber-900 dark:text-amber-100">
-                            <strong>Pago móvil (Bs):</strong> indicá tasa y monto en bolívares que acreditó el banco; el sistema exige que coincida con la suma de abonos en USD (Bs / tasa). Queda pendiente de validación con el banco hasta conciliar.
-                        </div>
                         <div x-show="grupo() === 'transferencia' || grupo() === 'usdt'" x-cloak class="rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-600 p-3 text-sm text-slate-700 dark:text-slate-200">
                             <strong>Zelle / Panamá / transferencia / USDT:</strong> cuenta destino, referencia y <strong>comprobante obligatorio</strong>.
                         </div>
@@ -134,10 +149,10 @@
                             </div>
                         </div>
 
-                        <div x-show="grupo() === 'pago_movil'" x-cloak class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div x-show="permiteTasaBs()" x-cloak class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div>
                                 <x-input-label for="tipo_tasa" value="Tipo de tasa" />
-                                <select id="tipo_tasa" name="tipo_tasa" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm" :disabled="grupo() !== 'pago_movil'" :required="grupo() === 'pago_movil'">
+                                <select id="tipo_tasa" name="tipo_tasa" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm" :disabled="!permiteTasaBs()" :required="grupo() === 'pago_movil'">
                                     @foreach (\App\Models\Pago::tiposTasa() as $val => $label)
                                     <option value="{{ $val }}" @selected(old('tipo_tasa', \App\Models\Pago::TIPO_TASA_BCV)===$val)>{{ $label }}</option>
                                     @endforeach
@@ -146,18 +161,29 @@
                             </div>
                             <div>
                                 <x-input-label for="valor_tasa" value="Valor tasa (Bs/USD)" />
-                                <x-text-input id="valor_tasa" name="valor_tasa" type="text" inputmode="decimal" class="mt-1 block w-full" x-model="valorTasa" x-bind:disabled="grupo() !== 'pago_movil'" x-bind:required="grupo() === 'pago_movil'" />
+                                <x-text-input id="valor_tasa" name="valor_tasa" type="text" inputmode="decimal" class="mt-1 block w-full" x-model="valorTasa" x-bind:disabled="!permiteTasaBs()" x-bind:required="grupo() === 'pago_movil'" />
                                 <x-input-error :messages="$errors->get('valor_tasa')" class="mt-2" />
                             </div>
                             <div>
                                 <x-input-label for="monto_bs" value="Monto Bs acreditado (banco)" />
-                                <x-text-input id="monto_bs" name="monto_bs" type="text" inputmode="decimal" class="mt-1 block w-full" x-model="montoBs" x-bind:disabled="grupo() !== 'pago_movil'" x-bind:required="grupo() === 'pago_movil'" />
+                                <input type="hidden" name="monto_bs" :value="montoBsRaw" />
+                                <x-text-input
+                                    id="monto_bs"
+                                    type="text"
+                                    inputmode="decimal"
+                                    class="mt-1 block w-full"
+                                    x-model="montoBsDisplay"
+                                    @input="onMontoBsInput($event)"
+                                    x-bind:disabled="!permiteTasaBs()"
+                                    x-bind:required="grupo() === 'pago_movil'"
+                                    placeholder="0,00"
+                                />
                                 <x-input-error :messages="$errors->get('monto_bs')" class="mt-2" />
                             </div>
                             <div class="sm:col-span-3 rounded-md bg-white/80 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm">
                                 <span class="text-gray-600 dark:text-gray-400">Equivalente USD (Bs / tasa):</span>
                                 <strong class="ms-1 text-millennium-dark dark:text-millennium-sand" x-text="equivUsd() || '—'"></strong>
-                                <span class="text-xs text-gray-500 ms-2">Debe coincidir con la suma de <strong>Abono USD</strong> arriba.</span>
+                                <span class="text-xs text-gray-500 ms-2" x-show="grupo() === 'pago_movil'">Debe cubrir la suma de <strong>Abono USD</strong> arriba.</span>
                             </div>
                         </div>
 

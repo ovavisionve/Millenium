@@ -18,6 +18,7 @@
                 x-data="cobranzaPagoPorMetodo({
                     metodoInicial: @js(old('metodo_pago', \App\Models\Pago::METODO_ZELLE)),
                     pagoMovil: @js(\App\Models\Pago::METODO_PAGO_MOVIL),
+                    transferencia: @js(\App\Models\Pago::METODO_TRANSFERENCIA),
                     efectivo: @js(\App\Models\Pago::METODO_EFECTIVO),
                     usdt: @js(\App\Models\Pago::METODO_USDT),
                     oldValorTasa: @js(old('valor_tasa')),
@@ -44,9 +45,6 @@
                     <x-input-error :messages="$errors->get('metodo_pago')" class="mt-2" />
                 </div>
 
-                <div x-show="grupo() === 'pago_movil'" x-cloak class="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-3 text-sm text-amber-900 dark:text-amber-100">
-                    <strong>Pago móvil:</strong> tasa y Bs acreditados; el monto USD debe coincidir con Bs / tasa.
-                </div>
                 <div x-show="grupo() === 'transferencia' || grupo() === 'usdt'" x-cloak class="rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-600 p-3 text-sm text-slate-700 dark:text-slate-200">
                     Datos de transferencia / divisas y comprobante obligatorio.
                 </div>
@@ -68,10 +66,10 @@
                     <x-input-error :messages="$errors->get('recibido_por')" class="mt-2" />
                 </div>
 
-                <div x-show="grupo() === 'pago_movil'" x-cloak class="grid sm:grid-cols-2 gap-4">
+                <div x-show="permiteTasaBs()" x-cloak class="grid sm:grid-cols-2 gap-4">
                     <div>
                         <x-input-label for="tipo_tasa" value="Tipo de tasa" />
-                        <select id="tipo_tasa" name="tipo_tasa" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm" :disabled="grupo() !== 'pago_movil'" :required="grupo() === 'pago_movil'">
+                        <select id="tipo_tasa" name="tipo_tasa" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm" :disabled="!permiteTasaBs()" :required="grupo() === 'pago_movil'">
                             @foreach ($tiposTasa as $val => $label)
                             <option value="{{ $val }}" @selected(old('tipo_tasa', \App\Models\Pago::TIPO_TASA_BCV)===$val)>{{ $label }}</option>
                             @endforeach
@@ -80,12 +78,23 @@
                     </div>
                     <div>
                         <x-input-label for="valor_tasa" value="Valor tasa (Bs/USD)" />
-                        <x-text-input id="valor_tasa" name="valor_tasa" type="text" inputmode="decimal" class="mt-1 block w-full" x-model="valorTasa" x-bind:disabled="grupo() !== 'pago_movil'" x-bind:required="grupo() === 'pago_movil'" />
+                        <x-text-input id="valor_tasa" name="valor_tasa" type="text" inputmode="decimal" class="mt-1 block w-full" x-model="valorTasa" x-bind:disabled="!permiteTasaBs()" x-bind:required="grupo() === 'pago_movil'" />
                         <x-input-error :messages="$errors->get('valor_tasa')" class="mt-2" />
                     </div>
                     <div>
                         <x-input-label for="monto_bs" value="Monto Bs acreditado" />
-                        <x-text-input id="monto_bs" name="monto_bs" type="text" inputmode="decimal" class="mt-1 block w-full" x-model="montoBs" x-bind:disabled="grupo() !== 'pago_movil'" x-bind:required="grupo() === 'pago_movil'" />
+                        <input type="hidden" name="monto_bs" :value="montoBsRaw" />
+                        <x-text-input
+                            id="monto_bs"
+                            type="text"
+                            inputmode="decimal"
+                            class="mt-1 block w-full"
+                            x-model="montoBsDisplay"
+                            @input="onMontoBsInput($event)"
+                            x-bind:disabled="!permiteTasaBs()"
+                            x-bind:required="grupo() === 'pago_movil'"
+                            placeholder="0,00"
+                        />
                         <x-input-error :messages="$errors->get('monto_bs')" class="mt-2" />
                     </div>
                 </div>

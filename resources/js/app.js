@@ -174,10 +174,12 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('cobranzaPagoPorMetodo', (opts = {}) => ({
         metodo: opts.metodoInicial ?? 'zelle',
         pagoMovil: opts.pagoMovil ?? 'pago_movil',
+        transferencia: opts.transferencia ?? 'transferencia',
         efectivo: opts.efectivo ?? 'efectivo',
         usdt: opts.usdt ?? 'usdt',
         valorTasa: opts.oldValorTasa != null ? String(opts.oldValorTasa) : '',
-        montoBs: opts.oldMontoBs != null ? String(opts.oldMontoBs) : '',
+        montoBsRaw: opts.oldMontoBs != null ? String(opts.oldMontoBs) : '',
+        montoBsDisplay: '',
         /** Solo pago de una factura: rellena monto USD al cambiar Bs o tasa. */
         sincronizarUsdDesdeBs: opts.sincronizarUsdDesdeBs ?? false,
         montoUsdPm:
@@ -185,6 +187,7 @@ document.addEventListener('alpine:init', () => {
                 ? String(opts.oldMontoAplicadoUsd)
                 : '',
         init() {
+            this.montoBsDisplay = this.formatearBsVE(this.montoBsRaw);
             if (this.sincronizarUsdDesdeBs && this.metodo === this.pagoMovil) {
                 this.aplicarEquivUsdAPm();
             }
@@ -197,7 +200,42 @@ document.addEventListener('alpine:init', () => {
                 }
             });
             this.$watch('valorTasa', () => this.aplicarEquivUsdAPm());
-            this.$watch('montoBs', () => this.aplicarEquivUsdAPm());
+            this.$watch('montoBsRaw', () => this.aplicarEquivUsdAPm());
+        },
+        normalizarNumero(evValue) {
+            const s = String(evValue ?? '').trim();
+            if (!s) return '';
+            // Permite: 340000 | 340.000 | 340.000,50 | 340000,50 | 340000.50
+            // Quitamos todo menos dígitos, punto y coma; luego resolvemos decimal.
+            const cleaned = s.replace(/[^\d.,-]/g, '');
+            const neg = cleaned.startsWith('-');
+            const body = neg ? cleaned.slice(1) : cleaned;
+            const lastComma = body.lastIndexOf(',');
+            const lastDot = body.lastIndexOf('.');
+            const decSep = lastComma > lastDot ? ',' : (lastDot > -1 ? '.' : '');
+            let intPart = body;
+            let decPart = '';
+            if (decSep) {
+                const idx = body.lastIndexOf(decSep);
+                intPart = body.slice(0, idx);
+                decPart = body.slice(idx + 1);
+            }
+            intPart = intPart.replace(/[.,]/g, '');
+            decPart = decPart.replace(/[.,]/g, '');
+            const out = (neg ? '-' : '') + intPart + (decPart ? '.' + decPart : '');
+            // Evitar cosas raras como '-' solo
+            return out === '-' ? '' : out;
+        },
+        formatearBsVE(raw) {
+            const n = parseFloat(String(raw ?? ''));
+            if (!raw || isNaN(n)) return '';
+            // Formato VE: miles con '.' y decimales con ','
+            return n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        },
+        onMontoBsInput(ev) {
+            const raw = this.normalizarNumero(ev?.target?.value);
+            this.montoBsRaw = raw;
+            this.montoBsDisplay = raw ? this.formatearBsVE(raw) : '';
         },
         aplicarEquivUsdAPm() {
             if (!this.sincronizarUsdDesdeBs || this.metodo !== this.pagoMovil) {
@@ -220,13 +258,75 @@ document.addEventListener('alpine:init', () => {
             }
             return 'transferencia';
         },
+        permiteTasaBs() {
+            return this.metodo === this.pagoMovil || this.metodo === this.transferencia;
+        },
         equivUsd() {
             const t = parseFloat(String(this.valorTasa).replace(',', '.'));
-            const b = parseFloat(String(this.montoBs).replace(',', '.'));
+            const b = parseFloat(String(this.montoBsRaw).replace(',', '.'));
             if (!t || t <= 0 || !b || b <= 0) {
                 return '';
             }
             return (Math.round((b / t) * 100) / 100).toFixed(2);
+        },
+    }));
+
+    Alpine.data('cobranzaClientePicker', (opts = {}) => ({
+        clientesData: Array.isArray(opts.clientesData) ? opts.clientesData : [],
+        baseUrl: opts.baseUrl ?? '',
+        query: opts.query ?? '',
+        open: false,
+        activoIdx: 0,
+        init() {
+            this.query = String(this.query || '');
+        },
+        get filtrados() {
+            const q = String(this.query || '').trim().toLowerCase();
+            const base = this.clientesData || [];
+            const rows = q
+                ? base.filter((c) => {
+                      const nombre = String(c?.nombre || '').toLowerCase();
+                      const rif = String(c?.rif || '').toLowerCase();
+                      const zona = String(c?.zona || '').toLowerCase();
+                      return (
+                          nombre.includes(q) ||
+                          rif.includes(q) ||
+                          zona.includes(q) ||
+                          String(c?.id || '').includes(q)
+                      );
+                  })
+                : base;
+            return rows.slice(0, 10);
+        },
+        onInput(ev) {
+            this.open = true;
+            this.query = String(ev?.target?.value ?? '');
+            this.activoIdx = 0;
+        },
+        mover(delta) {
+            if (!this.open) this.open = true;
+            const n = this.filtrados.length;
+            if (n === 0) return;
+            const next = this.activoIdx + delta;
+            this.activoIdx = Math.min(n - 1, Math.max(0, next));
+            this.$nextTick(() => {
+                const list = this.$refs.list;
+                const el = list?.querySelector?.(`[data-idx="${this.activoIdx}"]`);
+                if (el && typeof el.scrollIntoView === 'function') {
+                    el.scrollIntoView({ block: 'nearest' });
+                }
+            });
+        },
+        confirmarActivo() {
+            const c = this.filtrados[this.activoIdx];
+            if (c) this.seleccionar(c);
+        },
+        seleccionar(c) {
+            if (!c || !this.baseUrl) return;
+            window.location.href = `${this.baseUrl}/${encodeURIComponent(String(c.id))}`;
+        },
+        cerrar() {
+            this.open = false;
         },
     }));
 });

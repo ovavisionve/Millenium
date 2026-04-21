@@ -153,8 +153,13 @@
                                     <div class="text-xs text-gray-500 font-mono">{{ $linea->categoria->codigo }}</div>
                                 </td>
                                 <td class="px-4 py-2 text-end">{{ $linea->cantidad_animales !== null ? number_format($linea->cantidad_animales, 0, ',', '.') : '—' }}</td>
-                                <td class="px-4 py-2 text-end">{{ number_format($linea->cantidad, 3) }} {{ \App\Models\Categoria::unidadAbreviada()[$linea->categoria->unidad] ?? $linea->categoria->unidad }}</td>
-                                <td class="px-4 py-2 text-end">${{ number_format($linea->precio_unitario, 4) }}</td>
+                                @php
+                                    $unidad = $linea->categoria->unidad;
+                                    $decCantidad = $unidad === \App\Models\Categoria::UNIDAD_UNIDAD ? 0 : 2;
+                                    $udAb = \App\Models\Categoria::unidadAbreviada()[$unidad] ?? $unidad;
+                                @endphp
+                                <td class="px-4 py-2 text-end">{{ number_format((float) $linea->cantidad, $decCantidad) }} {{ $udAb }}</td>
+                                <td class="px-4 py-2 text-end">${{ number_format((float) $linea->precio_unitario, 2) }}</td>
                                 <td class="px-4 py-2 text-end font-medium">${{ number_format($linea->subtotal, 2) }}</td>
                             </tr>
                             @endforeach

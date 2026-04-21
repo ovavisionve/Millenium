@@ -23,6 +23,9 @@ class Pago extends Model
 
     public const METODO_TRANSFERENCIA = 'transferencia';
 
+    /** Aplicación interna de saldo a favor/anticipo del cliente (USD). */
+    public const METODO_SALDO_A_FAVOR = 'saldo_a_favor';
+
     public const VALIDACION_BANCO_PENDIENTE = 'pendiente';
 
     public const VALIDACION_BANCO_VERIFICADO_MANUAL = 'verificado_manual';
@@ -87,6 +90,7 @@ class Pago extends Model
             self::METODO_EFECTIVO => 'Efectivo',
             self::METODO_PAGO_MOVIL => 'Pago móvil (Bs)',
             self::METODO_TRANSFERENCIA => 'Transferencia bancaria',
+            self::METODO_SALDO_A_FAVOR => 'Saldo a favor (USD)',
         ];
     }
 
@@ -149,6 +153,9 @@ class Pago extends Model
         }
         if (in_array($metodo, self::metodosGrupoDivisaDigital(), true)) {
             return 'usdt';
+        }
+        if ($metodo === self::METODO_SALDO_A_FAVOR) {
+            return 'saldo';
         }
 
         return 'transferencia';
