@@ -1,0 +1,33 @@
+*.log
+.DS_Store
+
+# Entorno y secretos (nunca versionar)
+.env
+.env.backup
+.env.production
+.phpactor.json
+.phpunit.result.cache
+/.fleet
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/auth.json
+
+# Dependencias y artefactos de build
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+
+# SQLite local (la carpeta database/ también ignora *.sqlite* en database/.gitignore)
+/database/*.sqlite
+/database/*.sqlite-journal
+
+Homestead.json
+Homestead.yaml
+Thumbs.db

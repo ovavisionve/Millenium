@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Millennium / Incapor — paleta global (CSS)
+ * ---------------------------------------------------------------------------
+ * Nombre del aplicativo en Laravel: `APP_NAME` (p. ej. Millennium). Marca visual
+ * en pantalla: logo Incapor (PNG vectorial vía `x-brand-logo`), no texto del nombre.
+ * Colores corporativos viven en `tailwind.config.js` como `millennium.sand` y
+ * `millennium.dark`; aquí los duplicamos en :root por si en el futuro se usan
+ * variables CSS fuera de Tailwind (temas, PDF, email). Mantener hex alineados.
+ */
+:root {
+    --millennium-sand: #ddb387; /* arena — superficies y acentos cálidos */
+    --millennium-dark: #321d17; /* marrón — texto fuerte, bordes, botón primario */
+}
+
+[x-cloak] {
+    display: none !important;
+}
+
+/*
+ * Login — correo y contraseña: mismo fondo con autofill WebKit (evita azul distinto al contenedor).
+ */
+.millennium-login-field input:-webkit-autofill,
+.millennium-login-field input:-webkit-autofill:hover,
+.millennium-login-field input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #1f2937;
+    box-shadow: 0 0 0 1000px #ffffff inset;
+    transition: background-color 99999s ease-out;
+}
+
+.dark .millennium-login-field input:-webkit-autofill,
+.dark .millennium-login-field input:-webkit-autofill:hover,
+.dark .millennium-login-field input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #f3f4f6;
+    box-shadow: 0 0 0 1000px #111827 inset;
+}
