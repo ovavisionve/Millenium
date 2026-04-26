@@ -73,6 +73,8 @@
                                             class="w-28 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 shadow-sm focus:border-millennium-sand focus:ring-millennium-sand"
                                             value="{{ old('abonos.'.$f->id) }}"
                                             placeholder="0.00"
+                                            @input="window.millenniumOnInputMontoUsdField($event.target)"
+                                            @blur="window.millenniumOnBlurMontoUsdField($event.target)"
                                         />
                                         <x-input-error :messages="$errors->get('abonos.'.$f->id)" class="mt-2" />
                                     </td>

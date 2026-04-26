@@ -83,7 +83,7 @@
                                             ])>{{ $etiquetasCartera[$ec] ?? $ec }}</span>
                                     </td>
                                     <td class="px-3 py-2 text-end">
-                                        <input x-ref="abono" type="text" name="abonos[{{ $f->id }}]" value="{{ old('abonos.'.$f->id) }}" inputmode="decimal" placeholder="0.00" :disabled="!incluir" class="w-28 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm text-sm text-end disabled:opacity-50" />
+                                        <input x-ref="abono" type="text" name="abonos[{{ $f->id }}]" value="{{ old('abonos.'.$f->id) }}" inputmode="decimal" placeholder="0.00" :disabled="!incluir" title="Marcá «Abonar» en esta fila para poder escribir el monto" class="min-w-[6.5rem] w-32 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm text-sm text-end disabled:opacity-50" @input="window.millenniumOnInputMontoUsdField($event.target)" @blur="window.millenniumOnBlurMontoUsdField($event.target)" />
                                     </td>
                                     <td class="px-3 py-2 text-end whitespace-nowrap">
                                         <a href="{{ route('cobranza.pagos.create', $f) }}" class="text-millennium-dark dark:text-millennium-sand hover:underline">Solo esta</a>
@@ -102,6 +102,7 @@
                             transferencia: @js(\App\Models\Pago::METODO_TRANSFERENCIA),
                             efectivo: @js(\App\Models\Pago::METODO_EFECTIVO),
                             usdt: @js(\App\Models\Pago::METODO_USDT),
+                            sinComprobanteInicial: @json((bool) old('sin_comprobante')),
                             oldValorTasa: @js(old('valor_tasa')),
                             oldMontoBs: @js(old('monto_bs')),
                         })">
@@ -136,7 +137,9 @@
                         <div class="grid sm:grid-cols-2 gap-4">
                             <div>
                                 <x-input-label for="fecha_recibo" value="Fecha del recibo / abono" />
-                                <x-text-input id="fecha_recibo" name="fecha_recibo" type="date" class="mt-1 block w-full" value="{{ old('fecha_recibo', now()->toDateString()) }}" required />
+                                {{-- Texto AAAA-MM-DD: se puede borrar y escribir como en un campo normal. Valida el servidor. --}}
+                                <x-text-input id="fecha_recibo" name="fecha_recibo" type="text" inputmode="numeric" autocomplete="off" placeholder="AAAA-MM-DD" class="mt-1 block w-full font-mono" value="{{ old('fecha_recibo', now()->format('Y-m-d')) }}" />
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Formato: año-mes-día (ej. {{ now()->format('Y-m-d') }}).</p>
                                 <x-input-error :messages="$errors->get('fecha_recibo')" class="mt-2" />
                             </div>
                         </div>
@@ -161,7 +164,7 @@
                             </div>
                             <div>
                                 <x-input-label for="valor_tasa" value="Valor tasa (Bs/USD)" />
-                                <x-text-input id="valor_tasa" name="valor_tasa" type="text" inputmode="decimal" class="mt-1 block w-full" x-model="valorTasa" x-bind:disabled="!permiteTasaBs()" x-bind:required="grupo() === 'pago_movil'" />
+                                <x-text-input id="valor_tasa" name="valor_tasa" type="text" inputmode="decimal" class="mt-1 block w-full" x-bind:value="valorTasa" @input="onValorTasaInput($event)" @blur="onValorTasaBlur($event)" x-bind:disabled="!permiteTasaBs()" x-bind:required="grupo() === 'pago_movil'" />
                                 <x-input-error :messages="$errors->get('valor_tasa')" class="mt-2" />
                             </div>
                             <div>
@@ -170,13 +173,14 @@
                                 <x-text-input
                                     id="monto_bs"
                                     type="text"
-                                    inputmode="decimal"
+                                    inputmode="text"
                                     class="mt-1 block w-full"
-                                    x-model="montoBsDisplay"
+                                    x-bind:value="montoBsDisplay"
                                     @input="onMontoBsInput($event)"
+                                    @blur="onMontoBsBlur($event)"
                                     x-bind:disabled="!permiteTasaBs()"
                                     x-bind:required="grupo() === 'pago_movil'"
-                                    placeholder="0,00"
+                                    placeholder="Ej. 1210 o 1.210.000,50"
                                 />
                                 <x-input-error :messages="$errors->get('monto_bs')" class="mt-2" />
                             </div>
@@ -210,17 +214,18 @@
                         <div x-show="grupo() === 'transferencia' || grupo() === 'usdt' || grupo() === 'efectivo' || grupo() === 'pago_movil'" x-cloak class="sm:col-span-2">
                             <x-input-label for="comprobante" value="Comprobante (archivo o foto)" />
                             <label class="mt-2 inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                                <input type="checkbox" name="sin_comprobante" value="1" class="rounded border-gray-300 dark:border-gray-700" @checked(old('sin_comprobante')) />
+                                <input type="checkbox" name="sin_comprobante" value="1" class="rounded border-gray-300 dark:border-gray-700" x-model="sinComprobante" />
                                 No tengo comprobante
                             </label>
                             <input id="comprobante"
+                                x-ref="comprobante"
                                 name="comprobante"
                                 type="file"
                                 accept="image/*,.pdf"
                                 capture="environment"
                                 class="mt-1 block w-full text-sm text-gray-600 dark:text-gray-300 file:mr-4 file:rounded file:border-0 file:bg-millennium-sand/25 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-millennium-dark dark:file:bg-millennium-dark/40 dark:file:text-millennium-sand"
-                                x-bind:disabled="$el.form?.querySelector('input[name=sin_comprobante]')?.checked"
-                                :required="(grupo() === 'transferencia' || grupo() === 'usdt' || grupo() === 'efectivo') && !$el.form?.querySelector('input[name=sin_comprobante]')?.checked" />
+                                x-bind:disabled="sinComprobante"
+                                x-bind:required="(grupo() === 'transferencia' || grupo() === 'usdt' || grupo() === 'efectivo') && !sinComprobante" />
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-show="grupo() === 'efectivo'">Subí foto de los billetes o del recibo de caja.</p>
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-show="grupo() === 'transferencia' || grupo() === 'usdt'">Captura del comprobante bancario. En el móvil podés usar la cámara. Máx. 5 MB.</p>
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-show="grupo() === 'pago_movil'">Opcional hasta integrar API bancaria.</p>
