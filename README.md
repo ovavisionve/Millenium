@@ -74,6 +74,10 @@ Aplicación **Laravel** orientada a **cuentas por cobrar en la calle**: registro
 php artisan test
 ```
 
+## Despliegue IIS (producción)
+
+Checklist (sitio apuntando a `public/`, permisos `storage`, caché de config, seeders): [docs/deploy-iis-produccion.md](docs/deploy-iis-produccion.md).
+
 ## Licencia
 
 MIT (código de la aplicación). El framework [Laravel](https://laravel.com) conserva su licencia MIT.

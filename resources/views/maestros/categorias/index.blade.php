@@ -47,12 +47,13 @@
                                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400">{{ \App\Models\Categoria::unidadAbreviada()[$c->unidad] ?? $c->unidad }}</td>
                                 <td class="px-4 py-3">{{ $c->activo ? 'Sí' : 'No' }}</td>
                                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400 max-w-md truncate">{{ $c->descripcion }}</td>
-                                <td class="px-4 py-3 text-end space-x-2 whitespace-nowrap">
-                                    <a href="{{ route('categorias.edit', $c) }}" class="text-millennium-dark dark:text-millennium-sand hover:underline">Editar</a>
-                                    <form action="{{ route('categorias.destroy', $c) }}" method="post" class="inline" onsubmit="return confirm('¿Eliminar esta categoría?');">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="text-red-600 dark:text-red-400 hover:underline">Eliminar</button>
-                                    </form>
+                                <td class="px-4 py-3 text-end align-middle">
+                                    <x-maestro-fila-acciones
+                                        :edit-url="route('categorias.edit', $c)"
+                                        :delete-url="route('categorias.destroy', $c)"
+                                        delete-confirm="¿Eliminar esta categoría?"
+                                        :delete-aria-label="'Eliminar categoría ' . $c->nombre"
+                                    />
                                 </td>
                             </tr>
                             @empty

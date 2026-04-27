@@ -15,19 +15,125 @@
             <div class="rounded-md bg-green-50 dark:bg-green-900/20 p-4 text-sm text-green-800 dark:text-green-200">{{ session('status') }}</div>
             @endif
 
-            <form method="get" class="flex flex-wrap gap-3 items-end">
+            <form
+                method="get"
+                class="flex flex-wrap gap-3 items-end"
+                x-data="{
+                    estados: @js($estadosData),
+                    estadoId: @js((string) request('id_estado', '')),
+                    estadoTexto: '',
+                    estadoOpen: false,
+                    estadoActivoIdx: 0,
+                    init() {
+                        this.syncEstadoTexto();
+                    },
+                    syncEstadoTexto() {
+                        const id = String(this.estadoId ?? '');
+                        if (!id) {
+                            this.estadoTexto = '';
+                            return;
+                        }
+                        const row = (this.estados || []).find((e) => String(e.id) === id);
+                        this.estadoTexto = row ? String(row.nombre) : '';
+                    },
+                    estadosFiltrados() {
+                        const q = String(this.estadoTexto || '').trim().toLowerCase();
+                        const base = this.estados || [];
+                        const rows = q
+                            ? base.filter((e) => String(e.nombre || '').toLowerCase().includes(q))
+                            : base;
+                        return rows.slice(0, 50);
+                    },
+                    estadoMover(delta) {
+                        if (!this.estadoOpen) this.estadoOpen = true;
+                        const lista = this.estadosFiltrados();
+                        const n = lista.length;
+                        if (n <= 0) return;
+                        this.estadoActivoIdx = (this.estadoActivoIdx + delta + n) % n;
+                    },
+                    estadoConfirmarActivo() {
+                        const lista = this.estadosFiltrados();
+                        const e = lista[this.estadoActivoIdx];
+                        if (e) this.seleccionarEstado(e);
+                    },
+                    seleccionarEstado(e) {
+                        if (!e) return;
+                        this.estadoId = String(e.id);
+                        this.estadoTexto = String(e.nombre);
+                        this.estadoOpen = false;
+                    },
+                    limpiarEstado() {
+                        this.estadoId = '';
+                        this.estadoTexto = '';
+                        this.estadoOpen = false;
+                        this.estadoActivoIdx = 0;
+                    },
+                    onEstadoBlur() {
+                        window.setTimeout(() => {
+                            if (this.estadoOpen) return;
+                            if (String(this.estadoId || '').trim() !== '') return;
+                            const q = String(this.estadoTexto || '').trim().toLowerCase();
+                            if (!q) return;
+                            const exact = (this.estados || []).some((e) => String(e.nombre || '').trim().toLowerCase() === q);
+                            if (!exact) this.estadoTexto = '';
+                        }, 0);
+                    },
+                }"
+            >
                 <div class="flex-1 min-w-[180px]">
                     <x-input-label for="buscar" value="Buscar" />
-                    <x-text-input id="buscar" name="buscar" type="text" class="mt-1 block w-full" value="{{ request('buscar') }}" placeholder="Nombre, correo, dirección, estado, ruta o documento" />
+                    <x-text-input id="buscar" name="buscar" type="text" class="mt-1 block w-full" value="{{ request('buscar') }}" placeholder="Documento, nombre, teléfono…" />
                 </div>
-                <div class="min-w-[200px]">
-                    <x-input-label for="zona" value="Zona comercial" />
-                    <select id="zona" name="zona" class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm">
-                        <option value="">Todas</option>
-                        @foreach ($zonasComercialesFiltro as $cod => $etiq)
-                        <option value="{{ $cod }}" @selected(request('zona') === $cod)>{{ $etiq }}</option>
-                        @endforeach
-                    </select>
+                <div class="min-w-[220px] flex-1 sm:max-w-xs">
+                    <x-input-label for="estado_buscar_clientes" value="Ubicado" />
+                    <div class="relative mt-1" @click.outside="estadoOpen = false">
+                        <input type="hidden" name="id_estado" :value="estadoId" />
+                        <input
+                            id="estado_buscar_clientes"
+                            type="text"
+                            autocomplete="off"
+                            placeholder="Escribí: Portuguesa, Aragua…"
+                            class="block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 shadow-sm focus:border-millennium-dark focus:ring-millennium-sand"
+                            x-model="estadoTexto"
+                            @focus="estadoOpen = true"
+                            @input="estadoId = ''; estadoOpen = true; estadoActivoIdx = 0"
+                            @keydown.down.prevent="estadoMover(1)"
+                            @keydown.up.prevent="estadoMover(-1)"
+                            @keydown.enter.prevent="estadoConfirmarActivo()"
+                            @keydown.escape.prevent="estadoOpen = false"
+                            @blur="onEstadoBlur()"
+                        />
+                        <div
+                            x-show="estadoOpen"
+                            x-cloak
+                            class="absolute left-0 right-0 z-50 mt-1 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg"
+                            style="top: calc(100% + 0.25rem);"
+                        >
+                            <div class="max-h-64 overflow-auto py-1">
+                                <button
+                                    type="button"
+                                    class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                                    @click="limpiarEstado()"
+                                >
+                                    <span class="font-medium">Todas</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400"> · sin filtrar por estado</span>
+                                </button>
+                                <template x-for="(e, idx) in estadosFiltrados()" :key="e.id">
+                                    <button
+                                        type="button"
+                                        class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                                        :class="idx === estadoActivoIdx ? 'bg-gray-50 dark:bg-gray-800' : ''"
+                                        @click="seleccionarEstado(e)"
+                                    >
+                                        <span class="font-medium" x-text="e.nombre"></span>
+                                    </button>
+                                </template>
+                                <div x-show="estadosFiltrados().length === 0" class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
+                                    No hay coincidencias.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="min-w-[220px]">
                     <x-input-label for="vendedor_id" value="Vendedor" />
@@ -39,7 +145,7 @@
                     </select>
                 </div>
                 <x-secondary-button type="submit" class="h-10">Filtrar</x-secondary-button>
-                @if (request()->anyFilled(['buscar', 'vendedor_id', 'zona']))
+                @if (request()->anyFilled(['buscar', 'vendedor_id', 'id_estado']))
                 <a href="{{ route('clientes.index') }}" class="text-sm text-gray-600 dark:text-gray-400 hover:underline">Limpiar</a>
                 @endif
             </form>
@@ -51,13 +157,10 @@
                             <tr>
                                 <th class="px-4 py-3 font-medium">Documento</th>
                                 <th class="px-4 py-3 font-medium">Nombre / razón social</th>
-                                <th class="px-4 py-3 font-medium">Correo</th>
-                                <th class="px-4 py-3 font-medium">Dirección</th>
                                 <th class="px-4 py-3 font-medium">Teléfono</th>
                                 <th class="px-4 py-3 font-medium">Estado / ubicación</th>
-                                <th class="px-4 py-3 font-medium">Zona</th>
                                 <th class="px-4 py-3 font-medium">Vendedor</th>
-                                <th class="px-4 py-3 font-medium text-end">Acciones</th>
+                                <th class="sticky right-0 z-10 min-w-[16rem] bg-gray-50 px-4 py-3 text-end font-medium shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] dark:bg-gray-700 sm:min-w-[17.5rem]">Acciones</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
@@ -65,8 +168,6 @@
                             <tr class="text-gray-900 dark:text-gray-100">
                                 <td class="px-4 py-3 font-mono text-xs">{{ $c->full_identificacion }}</td>
                                 <td class="px-4 py-3">{{ $c->nombre_razon_social }}</td>
-                                <td class="px-4 py-3 max-w-[10rem] truncate" title="{{ $c->email ?? '' }}">{{ $c->email ?? '—' }}</td>
-                                <td class="px-4 py-3 max-w-[12rem] truncate" title="{{ $c->direccion ?? '' }}">{{ $c->direccion ?? '—' }}</td>
                                 <td class="px-4 py-3">{{ $c->telefono ?? '—' }}</td>
                                 <td class="px-4 py-3">
                                     @php
@@ -86,19 +187,19 @@
                                     @endphp
                                     {{ $u !== [] ? implode(' · ', $u) : '—' }}
                                 </td>
-                                <td class="px-4 py-3">{{ $c->zona }}</td>
                                 <td class="px-4 py-3">{{ $c->vendedor?->name ?? '—' }}</td>
-                                <td class="px-4 py-3 text-end space-x-2 whitespace-nowrap">
-                                    <a href="{{ route('clientes.edit', $c) }}" class="text-millennium-dark dark:text-millennium-sand hover:underline">Editar</a>
-                                    <form action="{{ route('clientes.destroy', $c) }}" method="post" class="inline" onsubmit="return confirm('¿Eliminar este cliente?');">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="text-red-600 dark:text-red-400 hover:underline">Eliminar</button>
-                                    </form>
+                                <td class="sticky right-0 z-10 min-w-[16rem] bg-white px-3 py-3 text-end align-middle shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.06)] dark:bg-gray-800 sm:min-w-[17.5rem]">
+                                    <x-maestro-fila-acciones
+                                        :edit-url="route('clientes.edit', $c)"
+                                        :delete-url="route('clientes.destroy', $c)"
+                                        delete-confirm="¿Eliminar este cliente?"
+                                        :delete-aria-label="'Eliminar cliente ' . $c->nombre_razon_social"
+                                    />
                                 </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="9" class="px-4 py-8 text-center text-gray-500">No hay clientes.</td>
+                                <td colspan="6" class="px-4 py-8 text-center text-gray-500">No hay clientes.</td>
                             </tr>
                             @endforelse
                         </tbody>

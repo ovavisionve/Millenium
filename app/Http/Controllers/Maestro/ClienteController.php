@@ -27,21 +27,30 @@ class ClienteController extends Controller
 
         if ($request->filled('buscar')) {
             $s = $request->string('buscar')->toString();
-            $q->whereBuscarTexto($s);
+            $q->whereBuscarTexto($s, true);
         }
 
         if ($request->filled('vendedor_id')) {
             $q->where('vendedor_id', $request->integer('vendedor_id'));
         }
 
-        if ($request->filled('zona') && $request->string('zona')->trim()->toString() !== '') {
-            $q->where('zona', $request->string('zona')->trim()->toString());
+        if ($request->filled('id_estado')) {
+            $q->where('id_estado', $request->integer('id_estado'));
         }
+
+        $estados = Estado::query()
+            ->orderBy('nombre_estado')
+            ->get(['id_estado', 'nombre_estado', 'codigo_iso_3166_2']);
+        $estadosData = $estados->map(fn ($e) => [
+            'id' => (int) $e->id_estado,
+            'nombre' => (string) $e->nombre_estado,
+            'iso' => (string) ($e->codigo_iso_3166_2 ?? ''),
+        ])->values();
 
         return view('maestros.clientes.index', [
             'clientes' => $q->paginate(15)->withQueryString(),
             'vendedores' => User::opcionesVendedor(),
-            'zonasComercialesFiltro' => ZonasComerciales::opciones(),
+            'estadosData' => $estadosData,
         ]);
     }
 

@@ -1,6 +1,71 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
+import Swal from 'sweetalert2';
+import 'sweetalert2/dist/sweetalert2.min.css';
+
+if (typeof window !== 'undefined') {
+    window.millenniumSwal = Swal;
+
+    /** Mapea claves de validación Laravel (clientes) a id de campo; usado con foco + resumen. */
+    const MILLENNIUM_CLIENTE_LARAVEL_KEY_TO_ID = {
+        id_estado: 'estado_buscar',
+        id_ciudad: 'ciudad_buscar',
+        id_municipio: 'municipio_buscar',
+        id_parroquia: 'parroquia_buscar',
+        documento_numero: 'documento_numero',
+        tipo_documento: 'tipo_documento',
+        nombre_razon_social: 'nombre_razon_social',
+        email: 'email',
+        direccion: 'direccion',
+        telefono: 'telefono',
+        zona_select: 'zona_select',
+        zona: 'zona_select',
+        zona_otra: 'zona_otra',
+        vendedor_id: 'vendedor_id',
+    };
+
+    window.millenniumClienteFocusByLaravelKey = (key) => {
+        if (!key) {
+            return;
+        }
+        const id = MILLENNIUM_CLIENTE_LARAVEL_KEY_TO_ID[String(key)] ?? null;
+        if (!id) {
+            return;
+        }
+        const el = document.getElementById(id);
+        if (!el) {
+            return;
+        }
+        // Evitar que el foco “vuelva” al botón que disparó la acción.
+        try {
+            const a = document.activeElement;
+            if (a && typeof a.blur === 'function') a.blur();
+        } catch (e) {}
+
+        if (!el.disabled) {
+            try {
+                el.focus({ preventScroll: true });
+            } catch (e) {}
+        }
+
+        const top = el.getBoundingClientRect().top + (window.pageYOffset || 0);
+        const offset = 120;
+        const y = Math.max(0, top - offset);
+        window.scrollTo({ top: y, left: 0, behavior: 'auto' });
+
+        window.setTimeout(function () {
+            const top2 = el.getBoundingClientRect().top + (window.pageYOffset || 0);
+            const y2 = Math.max(0, top2 - offset);
+            window.scrollTo({ top: y2, left: 0, behavior: 'auto' });
+            if (!el.disabled) {
+                try {
+                    el.focus({ preventScroll: true });
+                } catch (e) {}
+            }
+        }, 80);
+    };
+}
 
 /**
  * Normaliza texto numérico a string con punto decimal (compatible con PHP/Laravel).

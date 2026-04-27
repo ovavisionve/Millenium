@@ -44,8 +44,8 @@
                                     <td class="px-4 py-3">{{ $v->name }}</td>
                                     <td class="px-4 py-3">{{ $v->email }}</td>
                                     <td class="px-4 py-3">{{ $roleLabels[$v->role] ?? $v->role }}</td>
-                                    <td class="px-4 py-3 text-end">
-                                        <a href="{{ route('usuarios.edit', $v) }}" class="text-millennium-dark dark:text-millennium-sand hover:underline">Editar</a>
+                                    <td class="px-4 py-3 text-end align-middle">
+                                        <x-maestro-fila-acciones :edit-url="route('usuarios.edit', $v)" />
                                     </td>
                                 </tr>
                             @empty

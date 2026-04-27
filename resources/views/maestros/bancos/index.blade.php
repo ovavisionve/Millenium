@@ -40,12 +40,13 @@
                                 <td class="px-4 py-3">{{ $banco->nombre }}</td>
                                 <td class="px-4 py-3">{{ $banco->activo ? 'Sí' : 'No' }}</td>
                                 <td class="px-4 py-3 text-gray-600 dark:text-gray-400 max-w-md truncate">{{ $banco->descripcion }}</td>
-                                <td class="px-4 py-3 text-end space-x-2 whitespace-nowrap">
-                                    <a href="{{ route('bancos.edit', $banco) }}" class="text-millennium-dark dark:text-millennium-sand hover:underline">Editar</a>
-                                    <form action="{{ route('bancos.destroy', $banco) }}" method="post" class="inline" onsubmit="return confirm('¿Eliminar este banco?');">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="text-red-600 dark:text-red-400 hover:underline">Eliminar</button>
-                                    </form>
+                                <td class="px-4 py-3 text-end align-middle">
+                                    <x-maestro-fila-acciones
+                                        :edit-url="route('bancos.edit', $banco)"
+                                        :delete-url="route('bancos.destroy', $banco)"
+                                        delete-confirm="¿Eliminar este banco?"
+                                        :delete-aria-label="'Eliminar banco ' . $banco->nombre"
+                                    />
                                 </td>
                             </tr>
                             @empty

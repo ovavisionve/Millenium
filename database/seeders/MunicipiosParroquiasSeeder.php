@@ -15,6 +15,12 @@ class MunicipiosParroquiasSeeder extends Seeder
 {
     public function run(): void
     {
+        if (app()->environment('production')) {
+            $this->command?->warn('MunicipiosParroquiasSeeder omitido en production: el set reducido chocaría con el catálogo nacional (INE). Usá import SQL o millennium:import-geografia-dumps.');
+
+            return;
+        }
+
         $municipios = [
             ['id_municipio' => 1, 'nombre_municipio' => 'Atanasio Girardot'],
             ['id_municipio' => 2, 'nombre_municipio' => 'Bolivar'],

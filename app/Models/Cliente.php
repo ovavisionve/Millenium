@@ -112,28 +112,42 @@ class Cliente extends Model
     }
 
     /**
-     * Búsqueda por nombre, zona, número o identificación completa (tipo-número).
+     * Búsqueda de texto. Con $soloColumnasListado (listado /clientes) solo: nombre, documento, teléfono y RIF compuesto;
+     * la ubicación se filtra aparte (p. ej. id_estado). Sin ese flag: incluye vendedor, estados/parroquias y email, dirección, zona.
      *
      * @param  Builder<Cliente>  $query
      */
-    public function scopeWhereBuscarTexto(Builder $query, string $s): void
+    public function scopeWhereBuscarTexto(Builder $query, string $s, bool $soloColumnasListado = false): void
     {
         $driver = $query->getConnection()->getDriverName();
         $concat = $driver === 'sqlite'
             ? "(tipo_documento || '-' || documento_numero)"
             : "CONCAT(tipo_documento, '-', documento_numero)";
 
+        if ($soloColumnasListado) {
+            $query->where(function (Builder $q) use ($s, $concat): void {
+                $q->where('nombre_razon_social', 'like', '%'.$s.'%')
+                    ->orWhere('documento_numero', 'like', '%'.$s.'%')
+                    ->orWhere('telefono', 'like', '%'.$s.'%')
+                    ->orWhereRaw("{$concat} LIKE ?", ['%'.$s.'%']);
+            });
+
+            return;
+        }
+
         $query->where(function (Builder $q) use ($s, $concat): void {
             $q->where('nombre_razon_social', 'like', '%'.$s.'%')
                 ->orWhere('documento_numero', 'like', '%'.$s.'%')
-                ->orWhere('email', 'like', '%'.$s.'%')
-                ->orWhere('direccion', 'like', '%'.$s.'%')
-                ->orWhere('zona', 'like', '%'.$s.'%')
+                ->orWhere('telefono', 'like', '%'.$s.'%')
+                ->orWhereHas('vendedor', fn (Builder $vq) => $vq->where('name', 'like', '%'.$s.'%'))
                 ->orWhereHas('estado', fn (Builder $eq) => $eq->where('nombre_estado', 'like', '%'.$s.'%'))
                 ->orWhereHas('ciudad', fn (Builder $cq) => $cq->where('nombre_ciudad', 'like', '%'.$s.'%'))
                 ->orWhereHas('municipio', fn (Builder $mq) => $mq->where('nombre_municipio', 'like', '%'.$s.'%'))
                 ->orWhereHas('parroquia', fn (Builder $pq) => $pq->where('nombre_parroquia', 'like', '%'.$s.'%'))
-                ->orWhereRaw("{$concat} LIKE ?", ['%'.$s.'%']);
+                ->orWhereRaw("{$concat} LIKE ?", ['%'.$s.'%'])
+                ->orWhere('email', 'like', '%'.$s.'%')
+                ->orWhere('direccion', 'like', '%'.$s.'%')
+                ->orWhere('zona', 'like', '%'.$s.'%');
         });
     }
 }

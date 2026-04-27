@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Console\Commands\FixLegacyAraguaSeedMunicipiosEstadoCommand;
+use App\Console\Commands\ImportGeografiaDumpsCommand;
 use App\Models\Factura;
 use App\Policies\FacturaPolicy;
 use Illuminate\Support\Carbon;
@@ -16,7 +18,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->commands([
+            ImportGeografiaDumpsCommand::class,
+            FixLegacyAraguaSeedMunicipiosEstadoCommand::class,
+        ]);
     }
 
     /**

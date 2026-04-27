@@ -37,3 +37,19 @@
     -webkit-text-fill-color: #f3f4f6;
     box-shadow: 0 0 0 1000px #111827 inset;
 }
+
+/*
+ * SweetAlert2 — resúmenes de validación: el núcleo centra; el cuerpo va alineado a la izquierda.
+ */
+.swal2-container .swal2-html-container.swal2-millennium-resumen {
+    text-align: left !important;
+    margin: 0.4em 1.15em 0 !important;
+    max-width: 100% !important;
+    justify-content: flex-start;
+}
+.swal2-container .swal2-title.swal2-millennium-resumen-title {
+    text-align: center;
+}
+.swal2-container .swal2-popup.swal2-millennium-resumen-popup {
+    text-align: center;
+}

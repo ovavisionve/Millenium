@@ -14,9 +14,21 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        // Millennium — catálogos base para zonas predeterminadas (reportes consistentes).
-        $this->call(MunicipiosParroquiasSeeder::class);
+        if (! app()->environment('production')) {
+            $this->call(MunicipiosParroquiasSeeder::class);
+            $this->seedLocalDemoUsers();
+        } else {
+            $this->command?->warn('Entorno production: se omiten MunicipiosParroquiasSeeder y usuarios @millennium.local (evita pisar geografía INE y credenciales demo).');
+        }
 
+        $this->seedCategoriasYBancos();
+    }
+
+    /**
+     * Usuarios y claves de demo solo fuera de production.
+     */
+    private function seedLocalDemoUsers(): void
+    {
         User::query()->updateOrCreate(
             ['email' => 'admin@millennium.local'],
             [
@@ -49,7 +61,10 @@ class DatabaseSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+    }
 
+    private function seedCategoriasYBancos(): void
+    {
         $categorias = [
             [
                 'codigo' => 'VACA',

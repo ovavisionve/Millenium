@@ -36,6 +36,37 @@
         $zonaSelectInicial = '';
     }
     $zonaOtraInicial = old('zona_otra', $zonaSelectInicial === '__otra__' ? (string) $zonaValorActual : '');
+
+    /** Resumen de errores Laravel (foco + SweetAlert al recargar el formulario). */
+    $clienteFormErrList = $errors->any() ? $errors->all() : [];
+    /** Misma secuencia que la validación en cliente: documento → nombre → ubicación/estado → resto. */
+    $clienteFormErrFirstKey = null;
+    if ($errors->any()) {
+        $prioridadCampo = [
+            'tipo_documento' => 1,
+            'documento_numero' => 2,
+            'nombre_razon_social' => 3,
+            'email' => 4,
+            'direccion' => 5,
+            'id_estado' => 6,
+            'id_ciudad' => 7,
+            'id_municipio' => 8,
+            'id_parroquia' => 9,
+            'telefono' => 10,
+            'zona_select' => 11,
+            'zona' => 12,
+            'zona_otra' => 12,
+            'vendedor_id' => 13,
+        ];
+        $mejor = 9999;
+        foreach ($errors->keys() as $k) {
+            $p = $prioridadCampo[$k] ?? 100;
+            if ($p < $mejor) {
+                $mejor = $p;
+                $clienteFormErrFirstKey = $k;
+            }
+        }
+    }
 @endphp
 <div
     class="space-y-4"
@@ -65,6 +96,22 @@
         @csrf
         @if ($isEdit)
             @method('patch')
+        @endif
+
+        @if ($errors->any())
+        <div
+            id="cliente-form-server-error-banner"
+            class="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200"
+            role="alert"
+            tabindex="-1"
+        >
+            <p class="font-semibold">No se pudo guardar. Revisá lo siguiente:</p>
+            <ul class="mt-2 list-inside list-disc space-y-0.5">
+                @foreach ($errors->all() as $err)
+                <li>{{ $err }}</li>
+                @endforeach
+            </ul>
+        </div>
         @endif
 
         {{-- Millennium — sección 2: identificación fiscal/persona --}}
@@ -1122,49 +1169,226 @@
                             this.telMsg = '';
                         }
                     },
-                    async enviarCliente($event) {
-                        this.ubicMsg = '';
-                        const idEst = String(this.estadoId || '').trim();
-                        if (!idEst) {
-                            this.ubicMsg = 'Elegí el estado del cliente (obligatorio para reportes por zona).';
-                            $event.preventDefault();
+                    /**
+                     * Orden lógico: identificación → nombre → estado → teléfono → zona. Scroll inmediato al primer campo.
+                     */
+                    enfocarCampoPorId(focusId) {
+                        if (!focusId) {
                             return;
                         }
-                        this.validarNombre();
-                        this.validarZona();
-                        this.validarTelefono();
+                        const el = document.getElementById(focusId);
+                        if (!el) {
+                            return;
+                        }
+                        // 1) Quitamos foco del botón/elemento actual (evita que el navegador “vuelva” abajo).
+                        try {
+                            const a = document.activeElement;
+                            if (a && typeof a.blur === 'function') a.blur();
+                        } catch (e) {}
+
+                        // 2) Enfocar sin scroll, luego posicionar el campo cerca del tope (mejor en móviles).
+                        if (!el.disabled) {
+                            try {
+                                el.focus({ preventScroll: true });
+                            } catch (e) {}
+                        }
+
+                        const top = el.getBoundingClientRect().top + (window.pageYOffset || 0);
+                        const offset = 120; // deja espacio para header/aire visual
+                        const y = Math.max(0, top - offset);
+                        window.scrollTo({ top: y, left: 0, behavior: 'auto' });
+
+                        // 3) Reintento corto: algunos navegadores reubican el scroll al cerrar el modal/teclado.
+                        window.setTimeout(() => {
+                            const top2 = el.getBoundingClientRect().top + (window.pageYOffset || 0);
+                            const y2 = Math.max(0, top2 - offset);
+                            window.scrollTo({ top: y2, left: 0, behavior: 'auto' });
+                            if (!el.disabled) {
+                                try {
+                                    el.focus({ preventScroll: true });
+                                } catch (e) {}
+                            }
+                        }, 80);
+                    },
+                    /**
+                     * Un solo resumen: lista numerada con sección + mensaje (misma lógica que al guardar, sin mezclar con Swal múltiple).
+                     */
+                    mostrarResumenProblemasCliente(problemas) {
+                        if (!problemas || !problemas.length) {
+                            return;
+                        }
+                        const firstId = problemas[0].id;
+                        const esc = (t) =>
+                            String(t)
+                                .replace(/&/g, '&amp;')
+                                .replace(/</g, '&lt;')
+                                .replace(/"/g, '&quot;');
+                        const html =
+                            '<div class="text-left" style="text-align:left;width:100%;max-width:100%">' +
+                            '<p style="margin:0 0 0.7rem 0;font-size:0.9em;line-height:1.5;color:#4b5563">Revisá todos los puntos (orden del formulario) y corregilos. El foco irá al primero al cerrar.</p>' +
+                            '<ol style="margin:0;padding:0 0 0 1.25em;list-style:decimal;list-style-position:outside;text-align:left;">' +
+                            problemas
+                                .map(
+                                    (p) =>
+                                        '<li style="margin:0.45em 0;text-align:left">' +
+                                        '<span style="font-weight:600;color:#1f2937">' +
+                                        esc(p.seccion) +
+                                        ':</span> ' +
+                                        esc(p.mensaje) +
+                                        '</li>'
+                                )
+                                .join('') +
+                            '</ol></div>';
+                        const go = () => {
+                            this.enfocarCampoPorId(firstId);
+                        };
+                        if (typeof window.millenniumSwal !== 'undefined') {
+                            window.millenniumSwal
+                                .fire({
+                                    icon: 'warning',
+                                    title: 'Revisá el formulario',
+                                    html: html,
+                                    width: 'min(34em, 96vw)',
+                                    customClass: {
+                                        htmlContainer: 'swal2-millennium-resumen',
+                                        popup: 'swal2-millennium-resumen-popup',
+                                        title: 'swal2-millennium-resumen-title',
+                                    },
+                                    confirmButtonText: 'Entendido',
+                                    confirmButtonColor: '#3E2723',
+                                    // Clave: no devolver el foco al botón que abrió el modal (Guardar).
+                                    returnFocus: false,
+                                })
+                                .then(go);
+                        } else {
+                            go();
+                        }
+                    },
+                    async enviarCliente($event) {
+                        $event.preventDefault();
+                        this.ubicMsg = '';
+
+                        const filas = [];
+
+                        // 1) Identificación
                         const docInput = document.getElementById('documento_numero');
                         if (docInput) {
                             docInput.dispatchEvent(new Event('input', { bubbles: true }));
                         }
+                        const digitos = this.digitosDocumentoDesdeDom();
+                        if (digitos.length === 0) {
+                            this.docClienteMsg = 'Ingresá el número de documento.';
+                            filas.push({ seccion: 'Identificación', mensaje: this.docClienteMsg, id: 'documento_numero' });
+                        } else {
+                            await this.verificarDocumentoRemoto();
+                            if (this.docClienteMsg) {
+                                filas.push({ seccion: 'Identificación', mensaje: this.docClienteMsg, id: 'documento_numero' });
+                            } else if (this.docDuplicadoMsg) {
+                                filas.push({ seccion: 'Identificación', mensaje: this.docDuplicadoMsg, id: 'documento_numero' });
+                            }
+                        }
+
+                        // 2) Nombre
+                        this.validarNombre();
+                        const nom = (document.getElementById('nombre_razon_social')?.value || '').trim();
+                        if (this.nombreMsg) {
+                            filas.push({ seccion: 'Nombre o razón social', mensaje: this.nombreMsg, id: 'nombre_razon_social' });
+                        } else if (nom.length < 3) {
+                            this.nombreMsg = 'Completá el nombre (mín. 3 caracteres).';
+                            filas.push({ seccion: 'Nombre o razón social', mensaje: this.nombreMsg, id: 'nombre_razon_social' });
+                        }
+
+                        // 3) Estado
+                        const idEst = String(this.estadoId || '').trim();
+                        if (!idEst) {
+                            this.ubicMsg = 'Elegí el estado del cliente (obligatorio para reportes por zona).';
+                            filas.push({ seccion: 'Ubicación (estado)', mensaje: this.ubicMsg, id: 'estado_buscar' });
+                        }
+
+                        // 4) Teléfono
                         const telInput = document.getElementById('telefono');
                         if (telInput) {
                             telInput.dispatchEvent(new Event('input', { bubbles: true }));
                         }
-                        const digitos = this.digitosDocumentoDesdeDom();
-                        if (digitos.length === 0) {
-                            this.docClienteMsg = 'Ingresá el número de documento.';
-                            $event.preventDefault();
+                        this.validarTelefono();
+                        if (this.telMsg) {
+                            filas.push({ seccion: 'Teléfono', mensaje: this.telMsg, id: 'telefono' });
+                        }
+
+                        // 5) Zona
+                        this.validarZona();
+                        if (this.zonaMsg) {
+                            const focoZ =
+                                String(this.zonaSelect || '').trim() === '__otra__' ? 'zona_otra' : 'zona_select';
+                            filas.push({ seccion: 'Zona comercial / ruta', mensaje: this.zonaMsg, id: focoZ });
+                        }
+
+                        if (filas.length === 0) {
+                            $event.target.submit();
                             return;
                         }
-                        await this.verificarDocumentoRemoto();
-                        if (this.docClienteMsg || this.docDuplicadoMsg) {
-                            $event.preventDefault();
-                            return;
-                        }
-                        if (this.nombreMsg || this.zonaMsg || this.telMsg) {
-                            $event.preventDefault();
-                            return;
-                        }
-                        const nom = (document.getElementById('nombre_razon_social')?.value || '').trim();
-                        if (nom.length < 3) {
-                            this.nombreMsg = 'Completá el nombre (mín. 3 caracteres).';
-                            $event.preventDefault();
-                            return;
-                        }
+                        this.mostrarResumenProblemasCliente(filas);
                     },
                 };
             }
         </script>
     @endpush
 @endonce
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const errList = @json($clienteFormErrList);
+        const firstKey = @json($clienteFormErrFirstKey);
+        if (!Array.isArray(errList) || errList.length === 0) {
+            return;
+        }
+        const banner = document.getElementById('cliente-form-server-error-banner');
+        const esc = function (t) {
+            return String(t)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/"/g, '&quot;');
+        };
+        const listHtml =
+            '<div class="text-left" style="text-align:left;width:100%;max-width:100%">' +
+            '<p style="margin:0 0 0.6rem 0;font-size:0.9em;line-height:1.45;color:#4b5563">Detalle del mismo listado resaltado arriba. Corregí y volvé a guardar.</p>' +
+            '<ol style="margin:0;padding:0 0 0 1.25em;list-style:decimal;text-align:left;">' +
+            errList
+                .map(function (x) {
+                    return '<li style="margin:0.4em 0;text-align:left">' + esc(x) + '</li>';
+                })
+                .join('') +
+            '</ol></div>';
+        const focusAfter = function () {
+            if (firstKey && typeof window.millenniumClienteFocusByLaravelKey === 'function') {
+                window.millenniumClienteFocusByLaravelKey(firstKey);
+                return;
+            }
+            if (banner) {
+                banner.scrollIntoView({ block: 'start', behavior: 'auto' });
+            }
+        };
+        if (typeof window.millenniumSwal !== 'undefined') {
+            window.millenniumSwal
+                .fire({
+                    icon: 'warning',
+                    title: 'No se pudo guardar',
+                    html: listHtml,
+                    width: 'min(34em, 96vw)',
+                    customClass: {
+                        htmlContainer: 'swal2-millennium-resumen',
+                        popup: 'swal2-millennium-resumen-popup',
+                        title: 'swal2-millennium-resumen-title',
+                    },
+                    confirmButtonText: 'Revisar',
+                    confirmButtonColor: '#3E2723',
+                    returnFocus: false,
+                })
+                .then(focusAfter);
+        } else {
+            focusAfter();
+        }
+    });
+</script>
+@endpush
